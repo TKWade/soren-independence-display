@@ -97,3 +97,22 @@ h1 { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1; font-weight: 
 @media (max-height: 620px) and (min-width: 800px) {
   .day-card .picture-frame { height: 60px; }
 }
+.display-state { min-height:50vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; font-size:28px; font-weight:800; }
+.display-state > span { font-size:64px; }
+.display-state button { padding:12px 28px; border-radius:18px; background:#416950; color:white; }
+
+/* Photo geometry is independent of decoded image dimensions at every viewport. */
+.day-pictures { min-width: 0; width: 100%; }
+.picture-tile { max-width: 100%; overflow: hidden; }
+.picture-frame { position: relative; min-width: 0; flex: 0 0 auto; overflow: hidden; }
+.picture-frame img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: center; }
+.picture-frame > svg { min-width: 0; }
+.picture-frame .picture-badge { bottom: 0; }
+.image-editor { margin-block: 1rem; padding: 1rem; border: 1px solid #b5cbd5; border-radius: 12px; }
+.image-editor-layout { display: flex; flex-wrap: wrap; align-items: start; gap: 24px; }
+.image-editor-controls { flex: 1; min-width: 200px; }
+.image-editor-controls input[type=range] { width: 100%; min-height: 44px; }
+.image-week-preview { width: 150px; max-width: 100%; flex: 0 0 150px; padding: 10px; border: 2px solid #afc8d2; border-radius: 24px; background: white; }
+.image-week-preview .picture-frame { height: 90px; }
+.image-week-preview .picture-label { font-size: 20px; }
+.repeat-summary { padding: 12px; background: #edf6fc; border-radius: 8px; }

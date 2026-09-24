@@ -1,0 +1,19 @@
+/* Default Day view rules, scoped so the development fallback stays unchanged. */
+.day-variant-b .event-card { height: 100%; }
+.day-variant-b .event-card > .picture-tile { flex: 0 0 auto; }
+.day-variant-b .inline-day-context { display: flex; gap: 6px; margin-top: 10px; padding: 8px 2px 2px; border-top: 1px solid #dce3d7; background: #f7f8f2; border-radius: 0 0 12px 12px; }
+.day-variant-b .inline-context-group { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 3px; }
+.day-variant-b .inline-context-group + .inline-context-group { border-left: 1px solid #e2e7dc; padding-left: 5px; }
+.day-variant-b .inline-context-heading { font-size: 10px; font-weight: 650; letter-spacing: .06em; color: #687663; }
+.day-variant-b .inline-context-people { display: flex; flex-wrap: wrap; gap: 3px; }
+.day-variant-b .inline-context-item { display: flex; flex: 1; min-width: 30px; flex-direction: column; align-items: center; }
+.day-variant-b .inline-context-item .picture-frame { height: 48px; margin: 0 0 3px; }
+.day-variant-b .inline-context-label { font-size: 12px; font-weight: 650; line-height: 1.15; overflow-wrap: anywhere; max-width: 100%; }
+.day-variant-b .status-past .inline-day-context { opacity: .55; filter: saturate(.45); }
+@media (max-width: 1050px), (max-height: 650px) {
+ .day-variant-b .inline-day-context { gap: 3px; margin-top: 6px; padding-top: 5px; }
+ .day-variant-b .inline-context-item .picture-frame { height: 34px; }
+ .day-variant-b .inline-context-label { font-size: 10px; }
+ .day-variant-b .inline-context-heading { font-size: 9px; }
+ .day-variant-b .inline-context-group + .inline-context-group { padding-left: 3px; }
+}

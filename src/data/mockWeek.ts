@@ -1,6 +1,10 @@
-import type { Activity, CalendarEvent, DaySchedule, Person, Place } from '../types/calendar'
-import { dateKey } from '../lib/schedule'
-export { dateKey } from '../lib/schedule'
+import type { Activity, CalendarEvent, DaySchedule, EventMatchingRule, EventVisualEnrichment, HomeSchedule, Person, Place, Profile } from '../types/calendar'
+import { dateKey } from '../lib/schedule.ts'
+import { buildDaySchedule } from '../lib/displaySchedule.ts'
+export { dateKey } from '../lib/schedule.ts'
+
+export const mockProfile: Profile = { id: 'soren', name: 'Soren' }
+const mockTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export const people: Record<string, Person> = {
   dad: { id: 'dad', name: 'Dad', picture: { id: 'dad', label: 'DAD', kind: 'dad' } },
@@ -23,6 +27,26 @@ export const activities = {
   pickup: { id: 'pickup', label: 'PICKUP', picture: { id: 'pickup', label: 'PICKUP', kind: 'home' } } satisfies Activity,
 }
 
+/** Examples of rule definitions only; no importer or matching engine is running. */
+export const mockMatchingRules: EventMatchingRule[] = [
+  { id: 'school-title', enabled: true, priority: 100, profileIds: [mockProfile.id],
+    match: { title: { operator: 'equals', value: 'SCHOOL', caseSensitive: false } },
+    defaults: { label: 'SCHOOL', activity: activities.school, picture: activities.school.picture } },
+  { id: 'swimming-title', enabled: true, priority: 90, profileIds: [mockProfile.id],
+    match: { title: { operator: 'contains', value: 'SWIMMING', caseSensitive: false } },
+    defaults: { label: 'SWIM', activity: activities.swim, picture: activities.swim.picture } },
+]
+
+export const mockHomeSchedule: HomeSchedule = {
+  id: 'weekly-home', profileId: mockProfile.id, timeZone: mockTimeZone,
+  nights: ([0, 1, 2, 3, 4, 5, 6] as const).map(weekday => {
+    const person = [people.mom, people.dad, people.dad, people.mom, people.mom, people.dad, people.dad][weekday]
+    return { weekday, bedtime: '19:30', people: [person],
+      place: person.id === 'dad' ? places.dadHome : places.momHome,
+      activity: activities.sleep, picture: { ...activities.sleep.picture, badgeKind: person.picture.kind } }
+  }),
+}
+
 /** A repeating illustrative week, anchored to the current local Monday. */
 export function createMockWeek(today: Date): DaySchedule[] {
   const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -34,19 +58,20 @@ export function createMockWeek(today: Date): DaySchedule[] {
     const person = [people.dad, people.dad, people.mom, people.mom, people.dad, people.dad, people.mom][index]
     const home = person.id === 'dad' ? places.dadHome : places.momHome
     const events: CalendarEvent[] = []
+    const enrichments: EventVisualEnrichment[] = []
     const add = (id: string, start: string, end: string | undefined, act: Activity, place: Place, label = act.label) => {
       const event: CalendarEvent = {
-        id: key + '-' + id, title: label, label, startTime: key + 'T' + start,
-        endTime: end ? key + 'T' + end : undefined,
-        activity: act, people: [person], place,
-        picture: { ...act.picture, label },
+        id: key + '-' + id, source: { kind: 'local' },
+        calendar: { title: label, startTime: key + 'T' + start,
+          endTime: end ? key + 'T' + end : undefined, timeZone: mockTimeZone, location: place.name },
       }
-      if (id === 'pickup') event.picture = { ...person.picture, label: 'PICKUP' }
-      if (act.id === 'home') event.picture = { ...home.picture, label: 'HOME' }
-      if (act.id === 'sleep') {
-        event.sleepLocation = home
-        event.picture = { ...act.picture, badgeKind: person.picture.kind }
+      const visual: EventVisualEnrichment = {
+        eventId: event.id, profileId: mockProfile.id, visible: true,
+        label, activity: act, people: [person], place, picture: { ...act.picture, label },
       }
+      if (id === 'pickup') visual.picture = { ...person.picture, label: 'PICKUP' }
+      if (act.id === 'home') visual.picture = { ...home.picture, label: 'HOME' }
+      enrichments.push(visual)
       events.push(event)
       return event.id
     }
@@ -64,7 +89,7 @@ export function createMockWeek(today: Date): DaySchedule[] {
       add('afternoon', '12:00', '18:00', activities.home, home)
     }
     add('dinner', '18:00', '19:30', activities.dinner, home)
-    add('sleep', '19:30', undefined, activities.sleep, home)
-    return { id: key, date: key, events, primaryEventId }
+    return buildDaySchedule({ date: key, profileId: mockProfile.id, events, enrichments,
+      homeSchedule: mockHomeSchedule, primaryEventId })
   })
 }

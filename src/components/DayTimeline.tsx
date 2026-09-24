@@ -13,8 +13,9 @@ export function DayTimeline({ day, now }: { day: DaySchedule; now: Date }) {
     <section className="detail-panel" aria-label={dayLabels(day.date).name + ' timeline'}>
       <div className="detail-heading flex items-center justify-between">
         <p>{dayLabels(day.date).displayDate}</p>
-        {day.date === dateKey(now) && <TodayBadge />}
+        {day.date === dateKey(now, day.timeZone) && <TodayBadge />}
       </div>
+      {timeline.events.length === 0 && <div className="display-state" role="status">☀ NO PLANS</div>}
       <ol className="timeline" aria-label="Day in order">
         {timeline.events.map((event, index) => {
           const status = timeline.statuses[event.id]
@@ -24,7 +25,7 @@ export function DayTimeline({ day, now }: { day: DaySchedule; now: Date }) {
                 aria-expanded={selectedId === event.id} aria-controls="event-context"
                 aria-label={`${event.label}, ${status}. ${event.people.map(person => person.name).join(', ')}, ${event.place.name}. Show pictures.`}
                 onClick={() => setSelectedId(selectedId === event.id ? null : event.id)}>
-                <span className="event-status">{statusLabels[status] || <span aria-hidden="true">{index + 1}</span>}</span>
+                <span className="event-status">{statusLabels[status]}</span>
                 <PictureTile item={event.picture} />
               </button>
               {index < timeline.events.length - 1 && <span className="sequence-arrow" aria-hidden="true">→</span>}

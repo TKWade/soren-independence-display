@@ -1,6 +1,8 @@
-import type { CalendarEvent, DaySchedule, DaySummary } from '../types/calendar.ts'
+import type { DisplayEvent, DaySchedule, DaySummary } from '../types/calendar.ts'
+import { addDays, atLocalTime, dateInZone } from './time.ts'
 
-export function dateKey(date: Date): string {
+export function dateKey(date: Date, zone?: string): string {
+  if (zone) return dateInZone(date, zone)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 export function dayLabels(date: string) {
@@ -12,7 +14,7 @@ export function dayLabels(date: string) {
     dayOfMonth: local.getDate(),
   }
 }
-export function orderedEvents(events: CalendarEvent[]) {
+export function orderedEvents(events: DisplayEvent[]) {
   return [...events].sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))
 }
 export function summarizeDay(day: DaySchedule): DaySummary | undefined {
@@ -27,7 +29,7 @@ export function summarizeDay(day: DaySchedule): DaySummary | undefined {
 }
 export type EventStatus = 'past' | 'now' | 'next' | 'future'
 export interface TimelineState {
-  events: CalendarEvent[]
+  events: DisplayEvent[]
   statuses: Record<string, EventStatus>
   currentId?: string
   nextId?: string
@@ -41,16 +43,17 @@ export function getTimelineState(day: DaySchedule, now: Date): TimelineState {
   const events = orderedEvents(day.events)
   const midnight = new Date(day.date + 'T00:00:00')
   midnight.setDate(midnight.getDate() + 1)
+  const dayEnd = day.timeZone ? Date.parse(atLocalTime(addDays(day.date, 1), '00:00', day.timeZone, 'compatible')) : midnight.getTime()
   const time = now.getTime()
-  const endOf = (event: CalendarEvent, index: number) => event.endTime
+  const endOf = (event: DisplayEvent, index: number) => event.endTime
     ? Date.parse(event.endTime)
-    : events[index + 1] ? Date.parse(events[index + 1].startTime) : midnight.getTime()
+    : events[index + 1] ? Date.parse(events[index + 1].startTime) : dayEnd
   let currentId: string | undefined
   events.forEach((event, index) => {
     if (Date.parse(event.startTime) <= time && time < endOf(event, index)) currentId = event.id
   })
   // Keep the final sleep destination meaningful for the rest of its scheduled day.
-  if (!currentId && dateKey(now) === day.date && events.length) {
+  if (!currentId && dateKey(now, day.timeZone) === day.date && events.length) {
     const final = events[events.length - 1]
     if (final.sleepLocation && time >= Date.parse(final.startTime)) currentId = final.id
   }

@@ -1,8 +1,16 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
-export default defineConfig({
+import { validateBrowserConfig } from './scripts/validate-browser-config.mjs'
+export default defineConfig(({ mode }) => {
+ const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env }
+ validateBrowserConfig(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY)
+ return {
+  build: { rolldownOptions: { output: { codeSplitting: { groups: [
+    { name: 'supabase', test: /node_modules[\\/]@supabase/ },
+    { name: 'timezone', test: /node_modules[\\/](@js-temporal|jsbi)/ },
+  ] } } } },
   plugins: [react(), tailwindcss(), VitePWA({
     registerType: 'autoUpdate',
     injectRegister: 'script',
@@ -25,4 +33,5 @@ export default defineConfig({
     },
     workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'], navigateFallback: 'index.html' },
   })],
+ }
 })
