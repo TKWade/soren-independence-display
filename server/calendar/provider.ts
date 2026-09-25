@@ -4,7 +4,7 @@ export interface SyncWindow {start:string;end:string}
 /** Only this server-side type carries provider tokens, next links and opaque delta state. */
 export interface PrivateSyncState {revision:number;cursor:unknown;window:SyncWindow}
 export interface ProviderCalendar {externalCalendarId:string;name:string;timeZone:string}
-export interface SyncPage {changes:ExternalChange[];nextPage?:unknown;checkpoint?:unknown}
+export interface SyncPage {changes:ExternalChange[];nextPage?:unknown;checkpoint?:unknown;replaceWindow?:boolean}
 export interface CalendarProviderAdapter {
  readonly provider:CalendarProvider
  listCalendars():Promise<ProviderCalendar[]>
@@ -39,7 +39,7 @@ export async function syncCalendar(adapter:CalendarProviderAdapter,calendar:Exte
     if(changes.length>20000) throw new Error('Sync batch too large')
     if(page.nextPage===undefined) {
      if(page.checkpoint===undefined) throw new Error('Missing final checkpoint')
-     await store.commit(calendar,previous?.revision??0,window,changes,page.checkpoint,initial)
+     await store.commit(calendar,previous?.revision??0,window,changes,page.checkpoint,initial||page.replaceWindow===true)
      return {skipped:false,count:changes.length}
     }
     const key=JSON.stringify(page.nextPage)

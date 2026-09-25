@@ -1,0 +1,9 @@
+project_id = "soren-independence-display"
+
+[functions.calendar-actions]
+# The handler verifies the bearer with auth.getUser (supports current signing keys).
+verify_jwt = false
+
+[functions.google-oauth]
+# Google redirects have no Supabase JWT; one-use state + HttpOnly browser binding are mandatory.
+verify_jwt = false

@@ -5,7 +5,19 @@ import assert from 'node:assert/strict'
 
 const userA='00000000-0000-4000-8000-000000000001'
 const userB='00000000-0000-4000-8000-000000000002'
-const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql']
+const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql']
+async function applyMigration(db,name,transform=sql=>sql) {
+ let sql=await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')
+ if(name==='202609240001_google_calendar.sql') {
+  // PGlite cannot load Supabase Vault. This SQL test double tests access/lifecycle, NOT encryption.
+  await db.exec(`create schema vault; create table vault.secrets(id uuid primary key default gen_random_uuid(),secret text);
+   create view vault.decrypted_secrets as select id,secret as decrypted_secret from vault.secrets;
+   create function vault.create_secret(value text) returns uuid language sql as $$ insert into vault.secrets(secret) values(value) returning id $$;
+   create function vault.update_secret(sid uuid,value text) returns void language sql as $$ update vault.secrets set secret=value where id=sid $$;`)
+  sql=sql.replace('create extension if not exists supabase_vault with schema vault;','-- Vault extension replaced by explicit test double above.')
+ }
+ await db.exec(transform(sql))
+}
 async function database(includeLatest=true) {
  const db=new PGlite()
  await db.exec(`
@@ -21,7 +33,7 @@ async function database(includeLatest=true) {
   grant select,insert,update,delete on storage.objects to authenticated;
   insert into auth.users values('${userA}'),('${userB}');
  `)
- for(const name of (includeLatest?migrations:migrations.slice(0,2))) await db.exec(await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8'))
+ for(const name of (includeLatest?migrations:migrations.slice(0,2))) await applyMigration(db,name)
  return db
 }
 async function asUser(db,id) { await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub='${id}';`) }
@@ -118,7 +130,7 @@ test('external calendar upgrade, atomic sync, protected cursors, profile mapping
   const activity=(await db.query('select id from public.activities limit 1')).rows[0].id
   const place=(await db.query('select id from public.places limit 1')).rows[0].id
   await db.exec('reset role;')
-  for(const file of migrations.slice(2)) await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'))
+  for(const file of migrations.slice(2)) await applyMigration(db,file)
   await db.exec('set role service_role;')
   const conn=(await db.query(`insert into public.calendar_connections(household_id,provider,label,status) values($1,'google','Account','connected') returning id`,[hid])).rows[0].id
   await db.query('select public.cache_provider_calendars($1,$2)',[conn,JSON.stringify([{externalCalendarId:'family',name:'Family',timeZone:'America/Chicago'}])])
@@ -187,5 +199,92 @@ test('external calendar upgrade, atomic sync, protected cursors, profile mapping
   // A completed replacement snapshot removes absent events only after all pages succeeded.
   await db.query('select public.commit_calendar_sync($1)',[JSON.stringify({...batch,calendar_id:secondCalendar,expected_revision:1,changes:[]})])
   assert.equal((await db.query(`select e.external_status from public.calendar_events e join public.external_event_sources s on s.event_id=e.id where s.calendar_id=$1`,[secondCalendar])).rows[0].external_status,'cancelled')
+ } finally {await db.close()}
+})
+
+
+test('Google OAuth state is one-use, browser/user bound, expiring; Vault credentials and disconnect are protected',async()=>{
+ const db=await database()
+ try {
+  await asUser(db,userA)
+  const hid=(await db.query(`select public.create_household('Google test','UTC') id`)).rows[0].id
+  await assert.rejects(db.query("select public.google_calendar_credentials('begin','{}')"),/permission denied/)
+  await assert.rejects(db.query('select * from vault.decrypted_secrets'),/permission denied/)
+  await db.exec('reset role; set role service_role;')
+  const call=async(operation,payload)=>(await db.query('select public.google_calendar_credentials($1,$2) value',[operation,JSON.stringify(payload)])).rows[0].value
+  const begin=()=>call('begin',{householdId:hid,userId:userA,ticketHash:'ticket',verifier:'verifier'})
+  await assert.rejects(call('begin',{householdId:hid,userId:userB,ticketHash:'bad',verifier:'bad'}),/Not a member/)
+  await begin()
+  await assert.rejects(call('start',{ticketHash:'ticket',userId:userB,stateHash:'state',bindingHash:'cookie'}),/Invalid OAuth start/)
+  assert.equal((await call('start',{ticketHash:'ticket',userId:userA,stateHash:'state',bindingHash:'cookie'})).verifier,'verifier')
+  await assert.rejects(call('consume',{stateHash:'wrong',bindingHash:'cookie'}),/Invalid OAuth state/)
+  await assert.rejects(call('consume',{stateHash:'state',bindingHash:'wrong'}),/Invalid OAuth state/)
+  const pending=await call('consume',{stateHash:'state',bindingHash:'cookie'})
+  await assert.rejects(call('consume',{stateHash:'state',bindingHash:'cookie'}),/Invalid OAuth state/)
+  const finish={pendingId:pending.id,account:'parent@example.test',refreshToken:'private-refresh',calendars:[{externalCalendarId:'primary',name:'Family',timeZone:'UTC'}]}
+  const {connectionId}=await call('finish',finish)
+  await assert.rejects(call('finish',finish),/no rows/)
+  const credential=await call('read',{connectionId});assert.equal(credential.refreshToken,'private-refresh')
+  await asUser(db,userA)
+  const publicConnection=(await db.query('select * from public.calendar_connections')).rows[0]
+  assert.equal(publicConnection.label,'parent@example.test');assert.equal(JSON.stringify(publicConnection).includes('private-refresh'),false)
+  const calendar=(await db.query('select * from public.external_calendars')).rows[0]
+  await db.query("update public.external_calendars set enabled=true,behavior='evaluate' where id=$1",[calendar.id])
+  await db.exec('reset role; set role service_role;')
+  await begin();await call('start',{ticketHash:'ticket',userId:userA,stateHash:'state2',bindingHash:'cookie'})
+  const inflight=await call('consume',{stateHash:'state2',bindingHash:'cookie'})
+  assert.equal((await call('disconnect',{connectionId})).refreshToken,'private-refresh')
+  await assert.rejects(call('finish',{...finish,pendingId:inflight.id}),/no rows/)
+  await assert.rejects(call('rotate',{connectionId,secretId:credential.secretId,refreshToken:'resurrect'}),/Authorization required/)
+  await assert.rejects(call('read',{connectionId}),/Authorization required/)
+  assert.equal((await call('disconnect',{connectionId})).refreshToken,null)
+  await db.exec('reset role;')
+  assert.equal((await db.query('select count(*)::int n from vault.secrets')).rows[0].n,0)
+  assert.equal((await db.query('select enabled from public.external_calendars')).rows[0].enabled,false)
+  assert.equal((await db.query('select status from public.calendar_connections')).rows[0].status,'disabled')
+  await begin();await db.query("update private.calendar_oauth_pending set expires_at=now()-interval '1 minute'")
+  await assert.rejects(call('start',{ticketHash:'ticket',userId:userA,stateHash:'expired',bindingHash:'cookie'}),/Invalid OAuth start/)
+ } finally {await db.close()}
+})
+
+test('Google migration only changes application ACLs and denies browser credential access',async()=>{
+ const sql=await readFile(new URL('../supabase/migrations/202609240001_google_calendar.sql',import.meta.url),'utf8')
+ const statements=sql.replace(/--[^\n]*/g,'').split(';').map(s=>s.trim())
+ for(const statement of statements.filter(s=>/^(grant|revoke)\b/i.test(s))) {
+  assert.doesNotMatch(statement,/\bvault\b/i,'Never change managed Vault ACLs')
+  assert.match(statement,/\bon\s+(?:function\s+)?(?:public|private)\./i,'ACLs must target named application objects')
+ }
+ assert.doesNotMatch(sql.replace(/--[^\n]*/g,''),/\balter\s+(?:function|table|view|schema|extension)\s+(?:vault\b|supabase_vault\b)/i)
+ const db=await database()
+ try {
+  const cleanupOid=(await db.query("select 'private.delete_calendar_vault_secret()'::regprocedure::oid id")).rows[0].id
+  for(const role of ['anon','authenticated']) {
+   await db.exec(`reset role; set role ${role};`)
+   await assert.rejects(db.query("select public.google_calendar_credentials('read','{}')"),/permission denied/)
+   for(const table of ['private.calendar_oauth_pending','private.calendar_connection_secrets','private.calendar_sync_state','vault.decrypted_secrets']) {
+    await assert.rejects(db.query('select * from '+table),/permission denied/)
+   }
+   const permissions=(await db.query(`select has_function_privilege(current_user,'public.google_calendar_credentials(text,jsonb)','execute') credential,
+    has_function_privilege(current_user,$1::oid,'execute') cleanup`,[cleanupOid])).rows[0]
+   assert.deepEqual(permissions,{credential:false,cleanup:false})
+  }
+ } finally {await db.close()}
+})
+
+test('late Google migration failure rolls back DDL and function moves; corrected migration retries cleanly',async()=>{
+ const db=await database(false)
+ try {
+  for(const name of migrations.slice(2,4)) await applyMigration(db,name)
+  const original=(await db.query("select pg_get_functiondef('public.commit_calendar_sync(jsonb)'::regprocedure) definition")).rows[0].definition
+  await assert.rejects(applyMigration(db,migrations[4],sql=>sql.replace(/commit;\s*$/i,()=>"do $$ begin raise exception 'simulated late migration failure'; end $$; commit;")),/simulated late migration failure/)
+  await db.exec('rollback;')
+  assert.equal((await db.query("select to_regclass('private.calendar_oauth_pending') pending")).rows[0].pending,null)
+  assert.equal((await db.query("select to_regprocedure('public.google_calendar_credentials(text,jsonb)') rpc")).rows[0].rpc,null)
+  assert.equal((await db.query("select count(*)::int n from information_schema.columns where table_schema='public' and table_name='calendar_connections' and column_name='provider_account_id'")).rows[0].n,0)
+  assert.equal((await db.query("select pg_get_functiondef('public.commit_calendar_sync(jsonb)'::regprocedure) definition")).rows[0].definition,original)
+  // The test Vault was installed outside the migration transaction; reuse it for retry.
+  const sql=await readFile(new URL('../supabase/migrations/'+migrations[4],import.meta.url),'utf8')
+  await db.exec(sql.replace('create extension if not exists supabase_vault with schema vault;',''))
+  assert.equal((await db.query("select to_regclass('private.calendar_oauth_pending') pending")).rows[0].pending,'private.calendar_oauth_pending')
  } finally {await db.close()}
 })

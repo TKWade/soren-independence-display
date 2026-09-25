@@ -19,7 +19,7 @@ function validate(event:ExternalEvent):ExternalChange {
  Temporal.Instant.from(event.lastSyncedAt).toZonedDateTimeISO(event.timeZone)
  return {type:'upsert',event}
 }
-/** Pure fixture-tested normalization; no HTTP or OAuth implementation. */
+/** Pure provider normalization shared by live adapters and test fixtures. */
 export function normalizeGoogleEvent(value:unknown,calendar:ExternalCalendar,syncedAt:string):ExternalChange {
  const raw=object(value),source=identity('google',raw,calendar)
  if(raw.status==='cancelled') return {type:'cancel',identity:source,lastSyncedAt:syncedAt}

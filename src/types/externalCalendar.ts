@@ -1,6 +1,6 @@
-import type { CalendarProvider, EventMatchingRule } from './calendar'
+import type { CalendarProvider, EventMatchingRule } from './calendar.ts'
 export interface CalendarConnection {
- id:string; household_id:string; provider:CalendarProvider; label:string;
+ id:string; household_id:string; provider:CalendarProvider; label:string; provider_account_id?:string|null;
  status:'connected'|'needs_authorization'|'disabled'; last_synced_at:string|null
 }
 export interface ExternalCalendar {

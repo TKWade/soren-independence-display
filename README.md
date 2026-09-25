@@ -30,7 +30,7 @@ Follow [Supabase setup](docs/supabase-setup.md) to apply migrations, configure `
 - `supabase/migrations/`: schema, RLS, private storage and optional authenticated seed.
 - `tests/`: domain tests and executable PostgreSQL migration/security tests.
 
-See [calendar ownership](docs/calendar-architecture.md) and [Supabase setup/security](docs/supabase-setup.md). External calendars remain the future scheduling source of truth; visual enrichment and home/sleep rules stay app-owned. Live Google/Microsoft OAuth and provider transports are not implemented; the provider-neutral cache/sync/admin foundation is ready.
+See [calendar ownership](docs/calendar-architecture.md) and [Supabase setup/security](docs/supabase-setup.md). Google Calendar can now remain the scheduling source of truth; visual enrichment and home/sleep rules stay app-owned. Read-only Google OAuth, Vault credentials, selected-calendar sync and the inbox are implemented behind the provider-neutral boundary. Microsoft remains deferred. Follow [Google setup and deployment](docs/google-calendar-setup.md) before connecting.
 
 ## Child UI and deployment limits
 
@@ -56,4 +56,4 @@ For a sign-in-free comparison using existing mock fixtures, use `/tests/browser/
 
 ## External calendar foundation
 
-The CALENDARS admin area now supports selected calendars, per-profile/series visual decisions, deterministic matching rules and an unmatched-event inbox. Scheduling remains provider-owned. Pure normalizers and trusted one-way sync infrastructure are implemented; live OAuth/provider transports are not. Apply migration 202609230002 before running the updated app. See [external calendar architecture, security and deployment](docs/external-calendars.md).
+The CALENDARS admin area now supports selected calendars, per-profile/series visual decisions, deterministic matching rules and an unmatched-event inbox. Scheduling remains provider-owned. Google read-only OAuth, Vault credentials and incremental sync are implemented; Microsoft remains deferred. Apply migrations through 202609240001 and follow [Google setup](docs/google-calendar-setup.md). See [external calendar architecture, security and deployment](docs/external-calendars.md).

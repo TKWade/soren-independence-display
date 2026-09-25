@@ -3,13 +3,16 @@ import type { CalendarConnection, ExternalCalendar } from '../../src/types/exter
 import type { CalendarProvider } from '../../src/types/calendar.ts'
 import { syncCalendar, type CalendarProviderAdapter } from './provider.ts'
 import { SupabaseSyncStore } from './supabaseStore.ts'
+import { beginGoogleOAuth } from './googleOAuth.ts'
+import { disconnectGoogle, googleAdapter } from './googleCredentials.ts'
+import type { GoogleConfig } from './google.ts'
 export type ProviderRegistry=Partial<Record<CalendarProvider,(connection:CalendarConnection)=>Promise<CalendarProviderAdapter>>>
-export interface CalendarServerConfig {url:string;anonKey:string;serviceRoleKey:string;allowedOrigins:string[]}
-/** Empty registry is intentional: no OAuth, token exchange, provider HTTP or mock data in production. */
+export interface CalendarServerConfig {url:string;anonKey:string;serviceRoleKey:string;allowedOrigins:string[];google?:GoogleConfig}
+/** Authorization is checked before creating an adapter or touching service-only credentials. */
 export function calendarActionHandler(config:CalendarServerConfig,providers:ProviderRegistry={}) {
  return async(request:Request):Promise<Response>=>{
   const origin=request.headers.get('origin')
-  const headers:Record<string,string>={'Content-Type':'application/json','Vary':'Origin'}
+  const headers:Record<string,string>={'Content-Type':'application/json','Vary':'Origin','Cache-Control':'no-store'}
   if(origin&&config.allowedOrigins.includes(origin)) {headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Headers']='authorization, apikey, content-type, x-client-info';headers['Access-Control-Allow-Methods']='POST, OPTIONS'}
   const reply=(status:number,value:unknown)=>new Response(JSON.stringify(value),{status,headers})
   if(origin&&!config.allowedOrigins.includes(origin)) return reply(403,{error:'origin_not_allowed'})
@@ -22,11 +25,14 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
    const {data:auth,error:authError}=await viewer.auth.getUser(authorization.slice(7))
    if(authError||!auth.user) return reply(401,{error:'sign_in_required'})
    const body=await request.json() as {householdId?:string;action?:string;id?:string}
-   if(!body.householdId||!body.id||!['connect','listCalendars','sync'].includes(body.action??'')) return reply(400,{error:'invalid_action'})
+   if(!body.householdId||!body.id||!['connect','disconnect','listCalendars','sync'].includes(body.action??'')) return reply(400,{error:'invalid_action'})
    const {data:membership,error:membershipError}=await viewer.from('household_members').select('id').eq('household_id',body.householdId).eq('user_id',auth.user.id).maybeSingle()
    if(membershipError||!membership) return reply(403,{error:'not_authorized'})
-   // Connecting will require state+PKCE OAuth and server-owned Vault storage in the next milestone.
-   if(body.action==='connect') return reply(501,{error:'provider_not_configured'})
+   const service=createClient(config.url,config.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false}})
+   if(body.action==='connect') {
+    if(body.id!=='google'||!config.google) return reply(501,{error:'provider_not_configured'})
+    return reply(200,await beginGoogleOAuth(service,config.google,body.householdId,auth.user.id))
+   }
    let calendar:ExternalCalendar|undefined
    if(body.action==='sync') {
     const {data,error}=await viewer.from('external_calendars').select('*').eq('household_id',body.householdId).eq('id',body.id).maybeSingle()
@@ -36,12 +42,16 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
    const {data:connection,error}=await viewer.from('calendar_connections').select('*').eq('household_id',body.householdId).eq('id',calendar?.connection_id??body.id).maybeSingle()
    if(error||!connection) return reply(404,{error:'connection_not_found'})
    const conn=connection as CalendarConnection
-   const factory=providers[conn.provider]
-   if(!factory) return reply(501,{error:'provider_not_configured'})
+   if(body.action==='disconnect') {
+    if(conn.provider!=='google') return reply(501,{error:'provider_not_configured'})
+    return reply(200,await disconnectGoogle(service,conn.id))
+   }
    if(conn.status!=='connected') return reply(409,{error:'authorization_required'})
+   if(calendar&&(!calendar.enabled||calendar.behavior==='ignore')) return reply(200,{skipped:true,count:0})
+   const factory=providers[conn.provider]??(conn.provider==='google'&&config.google?()=>googleAdapter(service,config.google!,conn.id):undefined)
+   if(!factory) return reply(501,{error:'provider_not_configured'})
    const provider=await factory(conn)
    if(provider.provider!==conn.provider) throw new Error('Wrong provider adapter')
-   const service=createClient(config.url,config.serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false}})
    if(body.action==='listCalendars') {
     const calendars=await provider.listCalendars()
     const {error}=await service.rpc('cache_provider_calendars',{connection:conn.id,calendars});if(error) throw error
@@ -56,6 +66,6 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
     await service.from('external_calendars').update({sync_status:'error',sync_error:'Synchronization failed; retry or reconnect.'}).eq('id',calendar!.id)
     throw new Error('Sync failed')
    }
-  } catch {return reply(503,{error:'calendar_action_failed'})} // Never return tokens, upstream URLs or raw provider errors.
+  } catch {return reply(503,{error:'calendar_action_failed'})}
  }
 }

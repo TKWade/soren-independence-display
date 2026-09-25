@@ -12,7 +12,7 @@ import './admin.css'
 
 export type RunAction = (action: () => Promise<unknown>, success?: string) => Promise<boolean>
 export default function Admin({userId,authLoading,store}:{userId?:string;authLoading:boolean;store:ReturnType<typeof useHouseholdData>}) {
- const [tab,setTab]=useState<'people'|'places'|'activities'|'schedule'|'calendars'>('people')
+ const [tab,setTab]=useState<'people'|'places'|'activities'|'schedule'|'calendars'>(()=>new URLSearchParams(window.location.search).has('googleCalendar')?'calendars':'people')
  const [busy,setBusy]=useState(false)
  const [message,setMessage]=useState('')
  const [failed,setFailed]=useState(false)

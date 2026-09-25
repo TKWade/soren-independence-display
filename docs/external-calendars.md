@@ -1,104 +1,56 @@
-# External calendar integration foundation
+# External calendar integration
 
-## Current boundary
+## Ownership and provider-neutral models
 
-The family calendar owns event titles, descriptions, times, recurrence, location text and cancellation state. This app owns per-profile relevance, visual activities, short labels, people, pictures, visual places and visibility. Week and the default Day B view still consume only `DisplayEvent`; their components and layouts are unchanged. Local recurring events and home/sleep rules remain supported and independent.
+The family calendar owns titles, descriptions, start/end, recurrence, location text and cancellation. This app owns per-profile relevance, short child labels, activities, photos, caregivers, visual places and visibility. Home/sleep remains an application-owned recurring schedule. Week and Day consume the same `DisplayEvent` model and have no Google fields.
 
-This milestone implements provider-neutral contracts, pure Google/Microsoft normalization, an incremental-sync coordinator, trusted persistence/actions, and caregiver connections/inbox/rules screens. **No real Google or Microsoft OAuth, token exchange, HTTP adapter, webhook, scheduled sync or provider write operation is implemented.** Connect controls explicitly show that authorization is not enabled. The server's provider registry is empty, and requests for a live provider return `provider_not_configured`; fixture adapters are test-only. Apply the database migration before running the updated app.
+Google is now implemented as a read-only live provider. Microsoft has a pure normalizer and the shared contracts, but no live transport or OAuth. See [Google setup, secrets, migration, deployment and end-to-end tests](google-calendar-setup.md).
 
-## Models and database
+`src/types/externalCalendar.ts` defines connections, selectable calendars, safe sync summaries, normalized `ExternalEvent`/`ExternalChange`, manual per-profile mappings and title-matching rules. One provider occurrence can have independent enrichment for multiple profiles. Provider identity is scoped by connection/calendar, so shared calendars in different accounts do not collide.
 
-`src/types/externalCalendar.ts` defines `CalendarConnection`, `ExternalCalendar`, the browser-safe `CalendarSyncState`, `ExternalEvent`/`ExternalChange`, `EventProfileMapping` and `CalendarMatchingRule`. Existing `CalendarProvider`, title-match operator types, event/source rows, visual libraries and rule table are reused.
+## Storage and service boundary
 
-New public tables:
+- `calendar_connections`: household, provider, account label/status and public provider account ID. Browser read-only.
+- `external_calendars`: discovery metadata and selections. Browser updates only enabled/behavior; discovery preserves selections, defaults new calendars to disabled/ignore, and disables missing calendars.
+- `calendar_events` and `external_event_sources`: scheduling cache and stable event/series/occurrence identities. Browser cannot write provider-owned data.
+- `event_profile_mappings`: manual `event:<id>` or `series:<id>` decisions per profile, with household-checked library references.
+- `event_matching_rules`: deterministic per-profile visual/ignore defaults with provider/calendar scope and priority.
+- `private.calendar_sync_state`: opaque checkpoint, bounded window and optimistic revision. Browser-inaccessible.
+- `private.calendar_connection_secrets`: Vault UUID reference only; refresh credentials are encrypted in Vault. Browser-inaccessible.
+- `private.calendar_oauth_pending`: transient, expiring OAuth state hashes, browser-binding hash, PKCE verifier and initiating household/user. Single-use callback consumption and authenticated completion. Browser-inaccessible.
 
-- `calendar_connections`: household, provider, human label, connection status and last sync. Browser read-only; an eventual OAuth callback provisions it.
-- `external_calendars`: one selectable provider calendar, scoped to its connection. Discovery defaults every new calendar to disabled/ignore. Browser can update only `enabled` and `behavior`; names, IDs and sync summaries are trusted-server-owned.
-- `event_profile_mappings`: per-profile manual include/ignore decisions and visual references, scoped by calendar plus `event:<provider-event-id>` or `series:<provider-series-id>`. Compound household FKs protect profiles, calendars, people, activities and places.
+Authenticated `save_external_mapping` atomically saves decisions and optional rules. Service-only cache/sync RPCs serialize connection then calendar locks, validate identities, require a selected/connected calendar, and atomically commit scheduling plus checkpoint. Google credential operations are service-only and recheck membership at completion. Disconnect removes authorization before attempting remote revocation; checkpoint revisions remain monotonic even before the first sync. Provider refresh never writes visual tables.
 
-New private tables:
+`calendar-actions` verifies the Supabase bearer with Auth and checks household membership and target ownership before privileged operations. It accepts action/household/target IDs, never arbitrary provider URLs, credentials or cursors. CORS uses explicit origins. `google-oauth` uses authenticated same-app kickoff, state, S256 PKCE and a browser-bound HttpOnly cookie. Tokens and upstream error details are never returned in browser responses. Supabase session tokens are separate from Google tokens. See the setup guide for the required function gateway settings.
 
-- `private.calendar_sync_state`: opaque adapter checkpoint, exact UTC window, optimistic revision and timestamp. No browser grants.
-- `private.calendar_connection_secrets`: protected Vault secret UUID reference only. No raw access/refresh tokens are stored by this milestone. No browser grants.
+## Adapter and synchronization
 
-Extended existing objects:
+`server/calendar/provider.ts` defines `CalendarProviderAdapter`: calendar discovery, initial sync, incremental sync and normalization. It has no provider event write operation. Provider-specific wire fields live in server normalizers/adapters. `SyncPage.replaceWindow` allows a complete bounded reconciliation even when triggered by incremental change detection; other providers may emit direct updates/tombstones.
 
-- `calendar_events` gains description, modification time, external status/kind and date-only all-day bounds. Provider updates modify these scheduling fields only. Local title and recurrence constraints remain in force; external titles may be empty or up to 10,000 characters rather than truncating them to a child label.
-- `external_event_sources` gains a household-checked calendar reference. Provider identity uniqueness is now `(calendar_id, external_event_id)` so accounts with the same provider calendar/event IDs cannot collide. Existing sources with no connection/calendar association remain preserved but are not automatically displayed; explicitly reconcile them before real sync.
-- `event_matching_rules` gains include/ignore action, calendar scope, picture-person override and Week primary flag. Existing `source_filter` and title/operator/priority fields are reused. Existing incomplete rules are retained but do not create incomplete child cards.
+Resolved recurring occurrences include moved exceptions and original occurrence identity; masters are never child-facing cards. All-day values are date-only with exclusive ends, projected at household-local boundaries. Timed values identify absolute instants. Google expansion is delegated to its bounded events endpoint. A future Microsoft adapter must resolve Graph timezone IDs and validate non-primary-calendar delta support before implementation.
 
-New RPCs: authenticated `save_external_mapping` atomically stores selected profile decisions and optional rules. Service-role-only `cache_provider_calendars`, `read_calendar_sync_state` and `commit_calendar_sync` support the trusted worker. Browser roles cannot write external scheduling/source rows, connection metadata, cursors or credential references. No existing migration is edited.
+The coordinator validates identity, pagination, final checkpoints and limits (100 pages / 20,000 changes / at most 366 days). Initial display windows span 30 days back and 180 ahead, rebased when fewer than 30 future days remain. Partial failures advance nothing. A cursor-expired signal resets once. A complete replacement marks absent cached events overlapping the window cancelled inside the same transaction, preserving all enrichment. Series tombstones also hide cached instances.
 
-## One-way provider interface
-
-`server/calendar/provider.ts` exposes `CalendarProviderAdapter`:
-
-- `listCalendars()` returns available calendar metadata.
-- `initialSync(calendar, window, nextPage?)` returns a bounded, complete initial snapshot in pages.
-- `incrementalSync(calendar, state, nextPage?)` returns provider updates and tombstones since the checkpoint.
-- `normalizeEvent(raw, calendar, syncedAt)` produces the shared model.
-
-No method can create, edit or delete a provider event. Provider-specific wire fields exist only in pure normalizers and test fixtures. `ExternalEvent` includes provider/connection/calendar/event/series identities, original occurrence start, title, description, start/end, all-day flag, IANA zone, provider location text, recurrence metadata, resolved-occurrence/master kind, status, last modification and last sync. Cancellations use sparse tombstones because deleted provider records may contain only identity; the cache retains prior fields and marks the event cancelled.
-
-Adapters must supply **resolved recurring occurrences** (including moved exceptions). Series masters and their raw recurrence metadata can be cached but never displayed as a single timed activity. Google and Microsoft raw recurrence representations are opaque to the display. Original occurrence identity is retained even when its time changes; manual series mappings survive provider updates.
-
-All-day dates have exclusive ends. The display projects each date range at household-local midnight boundaries without changing cached provider scheduling. Timed events retain absolute instants. Graph wire date-times must arrive with an offset, UTC, or an IANA zone; unsupported Windows zones are rejected rather than silently interpreted. A real Graph adapter must request UTC or translate zones before calling the normalizer.
-
-## Incremental state, atomicity and limits
-
-The coordinator collects at most 100 pages / 20,000 changes for a window no longer than 366 days. Initial HTTP action windows cover 30 days back and 180 days ahead. A saved window is reused until fewer than 30 future days remain, then deliberately rebased. Equivalent timestamp representations do not trigger a reset. A future background runner should reuse this action/coordinator rather than repeatedly downloading account history.
-
-Page cursors and final checkpoints are opaque to the coordinator and browser. Only after **all pages succeed** does `commit_calendar_sync` lock the calendar, verify revision and ownership/selection, write event changes and advance the checkpoint in one transaction. Concurrent workers with stale revisions fail and retry from fresh state. A failed page, malformed identity, invalid event or database failure advances nothing. Adapter-signaled `SyncCursorExpired` restarts one bounded initial snapshot; no unbounded retry loop.
-
-Complete replacement snapshots mark previously cached events overlapping that window as cancelled when absent; this only happens inside the final transaction. Incremental tombstones mark matching instances cancelled; a tombstone for a series ID also cancels its cached instances. App visual mappings are never deleted by sync. Outside-window cache retention and long-term pruning remain future maintenance work. Normalization/persistence assumes adapters resolve duplicate/out-of-order provider revisions correctly before returning the batch.
-
-Google implementation must follow its [incremental sync token/query and pagination rules](https://developers.google.com/workspace/calendar/api/guides/sync) and [events-list restrictions](https://developers.google.com/workspace/calendar/api/v3/reference/events/list). Do not mechanically combine arbitrary date filters with an existing token. The adapter must preserve its query state and provide a complete bounded occurrence snapshot for reset/reconciliation.
-
-Microsoft implementation must preserve opaque next/delta links and the calendarView range. The documented [v1.0 calendarView delta endpoint](https://learn.microsoft.com/en-us/graph/api/event-delta?view=graph-rest-1.0) has calendar-support constraints; verify the strategy for non-primary calendars before shipping selectable-calendar sync rather than silently importing the wrong calendar. [Event identities, series, exceptions and cancellation fields](https://learn.microsoft.com/en-us/graph/api/resources/event?view=graph-rest-1.0) stay inside the adapter. Stable/immutable provider IDs and expiry recovery must be tested against a real account next.
+Google keeps an unexpanded collection sync token and fetches a bounded resolved snapshot only when changes occur. This handles infinite recurrence without repeatedly fetching full history. Checkpoint-before-snapshot ordering replays concurrent changes on the next run. Manual Sync Now is implemented; scheduled jobs, push notifications, automatic retry queues and long-term cache pruning are deferred.
 
 ## Relevance and caregiver workflow
 
-Admin → **CALENDARS** → **Calendar connections** shows accounts and calendars. Enable only chosen calendars, and select “Include and evaluate events” or “Ignore calendar.” Disabled/ignored calendars immediately stop contributing to the child projection after refresh; their cache and mappings are retained. Refresh/sync buttons request trusted actions, not provider APIs. With the empty registry they cannot import live data yet.
+Calendar connections shows Google account/calendar selection and Sync Now. Disabled/ignored calendars and disconnected accounts are excluded from the child projection after refresh. Their cached data and visual decisions remain available for reconnect.
 
-**Calendar inbox** lists selected-calendar events without a complete decision for one or more active profiles, grouped by recurring series. It shows current decisions for each profile and read-only provider title/date/location. Choose profiles, activity, caregiver, visual place, child label, picture source, visibility and optional Week primary status, or ignore for those profiles. Whole-series scope is the default for recurring events; occurrence-only decisions are also possible. Saving changes only checked profiles. Ignoring for Soren leaves siblings independent; select all current profiles to ignore for the whole current family. A newly added profile starts unreviewed. “Include reviewed events” allows replacement of previous decisions.
-
-Optionally create a title-contains rule from the inbox decision. The decision and one rule per checked profile save atomically. Rules created this way are restricted to that calendar. **Matching rules** also supports create/edit/disable/delete, equals/contains, case sensitivity, priority, profile, calendar scope, and visual defaults or ignore. Names and whitespace are normalized for matching; there is no AI.
+Calendar inbox groups undecided events by series and lists active profiles still needing decisions. Select profiles, activity, caregiver, visual place, child label, picture and visibility, or ignore. Series scope is the recurring default; individual occurrence overrides are possible. Saving affects only selected profiles. Optionally create a title-contains rule atomically with the decision. Matching rules supports equals/contains, case sensitivity, scope, priority, enabled state and visual defaults/ignore.
 
 Precedence per profile:
 
-1. Manual occurrence decision.
-2. Manual series decision.
-3. Existing explicit per-event `event_visuals` enrichment.
-4. Highest-priority matching rule (stable ID breaks ties).
-5. Unmatched: inbox, omitted from child display.
+1. Manual occurrence mapping.
+2. Manual series mapping.
+3. Existing explicit event visuals.
+4. Highest-priority matching rule; stable ID breaks ties.
+5. Unmatched: inbox, absent from child display.
 
-Automatic rule results are derived, not copied into thousands of visual rows. Editing a rule or provider title intentionally re-evaluates automatic matches; a no-longer-matching event returns to the inbox. Manual decisions remain unchanged by provider updates and rule edits. Missing referenced visual libraries make a proposed include decision incomplete rather than creating blank child cards. Hidden mapped events count as reviewed, while an unmapped event never leaks provider text into the child UI.
+Rules are evaluated rather than copied into thousands of rows. Provider title changes can change automatic matches, while manual decisions remain intact. Missing required visuals keep an include decision incomplete. Newly added profiles start unreviewed. No raw provider title becomes a child label automatically.
 
-## Trusted action and credential boundary
+## Validation
 
-`server/calendar/actions.ts` checks an explicit CORS origin allowlist, verifies the bearer token with Supabase Auth, checks household membership using the caller's RLS client, and resolves the requested calendar/connection within that household **before** using a service-role client. The request cannot supply a cursor, provider URL, credentials or arbitrary cache batch. Failure responses are fixed codes; provider errors/tokens/URLs are not returned or logged. The browser repository calls `calendar-actions` via Supabase Functions.
+Apply migrations in order; the Google milestone adds only `202609240001_google_calendar.sql`. Follow [Google deployment](google-calendar-setup.md) for commands and hosted checks. No old migration is rewritten.
 
-`supabase/functions/calendar-actions/index.ts` is the Edge Function entry point; its Deno import map pins server dependencies. The shared server implementation is typechecked with the application build and tested locally, but the Edge Function has not been deployed or tested against hosted Auth. Production browser imports do not include server modules.
-
-For actual OAuth next: implement state+PKCE, exact redirect allowlists, household binding, least-privilege **read-only** scopes, authenticated connection callbacks, rotation/revocation and refresh handling. Encrypt refresh tokens in Supabase Vault or an external KMS-backed secret store. Store only the protected Vault reference in `private.calendar_connection_secrets`. The `CredentialVault.withCredentials` contract keeps token access inside a trusted callback. Vault integration and refresh-token encryption operations are intentionally not simulated or implemented yet. Never use `VITE_` variables, browser-readable tables or localStorage for provider credentials/cursors. Existing Supabase browser session tokens are separate from provider OAuth credentials.
-
-## Apply / validate / next steps
-
-Apply **only the new** `202609230002_external_calendars.sql` after the earlier foundation/sample/recurrence migrations. The migration was tested in local PGlite against existing seeded household data with Supabase Auth/Storage stubs; hosted deployment has not been changed.
-
-For an already-linked project with accurate migration history:
-
-```sh
-npx supabase db push --linked --skip-vault --dry-run
-npx supabase db push --linked --skip-vault
-```
-
-Review the pending set before the second command. If earlier migrations were applied with SQL Editor without CLI history, execute just the new migration there instead. Refresh the app after applying it.
-
-The function can be deployed later with `npx supabase functions deploy calendar-actions`. Configure the server-only `CALENDAR_ALLOWED_ORIGINS` secret (comma-separated exact origins) first. Supabase supplies its server URL/keys. Keep JWT verification enabled. Deploying this entry point alone does **not** connect Google/Microsoft: a real adapter factory must be registered and real OAuth/Vault handling implemented next.
-
-Ready for both providers: models, private checkpoint persistence, transactional sync cache, selected calendars, per-profile/series decisions, deterministic rules, inbox, child projection, and pure wire normalizers with fixture coverage. Still required: OAuth/Vault implementation, real read-only transports, provider pagination/checkpoint handling and recurrence expansion, real-account integration tests, scheduling/retry operations and deployment.
-
-Sign-in-free browser fixture: `/tests/browser/calendar-admin.html` exercises connections, inbox and rule forms with fictional read-only data; save/network actions are blocked. Automated tests cover normalization, recurrence instances, all-day ranges, multiple profiles, ignores, rules/inbox, preserved visuals, cancellations, shared child contracts, page failures/reset, cache atomicity, RLS/credential/cursor isolation, account-scoped identities and upgrade preservation. Run `npm test`, `npm run lint`, `npm run build`.
-
-Significant files: `src/types/externalCalendar.ts`, `src/calendar/relevance.ts`, `src/data/{records,repository,calendarRepository}.ts`, `src/lib/persistentSchedule.ts`, `src/admin/Calendar{Admin,Inbox,Rules,VisualFields}.tsx`, `src/admin/Admin.tsx`, `server/calendar/{provider,normalization,supabaseStore,actions}.ts`, the Edge Function entry/import map, the new migration, external/calendar database tests and fixtures, and `tsconfig.app.json` (includes shared server typechecking).
+Run `npm test`, `npm run lint`, `npm run build`. Tests cover state/user/browser/expiry/replay, normalized timed/all-day/recurring/cancelled events, Google request pagination and sync-token reset, preserved visuals, multi-profile relevance, RLS, credential isolation, disconnect and upgrade preservation. PGlite uses explicit Auth/Storage/Vault test doubles; Google HTTP is fixture-driven. Hosted consent, Vault encryption and live Google transport still require the documented end-to-end checks. The read-only `/tests/browser/calendar-admin.html` fixture exercises admin UI without executing save/network actions.

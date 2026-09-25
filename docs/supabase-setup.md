@@ -69,10 +69,10 @@ Run `npm test`, `npm run lint`, and `npm run build`. Tests execute migrations an
 
 On your configured project verify sign-in, CRUD/reload persistence, private image upload/access, a second user's isolation, sleep overrides, sign-out clearing the display, and production Android installation. No live Supabase project was provisioned during this implementation.
 
-Google/Microsoft calendar synchronization is the next major integration milestone. Provider metadata and matching rules now feed the external-event inbox and child projection through the provider-neutral sync foundation. Real calendar OAuth/API transports and external recurrence expansion remain unimplemented. See external-calendars.md for the exact boundary. Admin creates individual timed local events and local daily/weekly/monthly series. The legacy mock-week module remains only as a regression-test fixture, not the runtime source.
+Google Calendar OAuth and read-only sync are implemented. Apply the new Google migration and configure/deploy the Edge Functions using [Google setup](google-calendar-setup.md). Microsoft remains deferred. Provider scheduling feeds the existing inbox, matching rules and child projection. Admin creates individual timed local events and local daily/weekly/monthly series. The legacy mock-week module remains only as a regression-test fixture, not the runtime source.
 
 References: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Storage access control](https://supabase.com/docs/guides/storage/security/access-control).
 
 For the new recurring series and photo workflow, apply [202609230001 and follow these deployment steps](recurrence-images.md#migration-and-deployment). Original and optimized image copies remain private; see that guide for validation, cropping and storage limits.
 
-Apply the new 202609230002 external-calendar migration before running the latest client. Follow [external calendar setup and security](external-calendars.md) for the optional Edge Function boundary and what remains before real Google/Microsoft connections.
+Apply the new 202609230002 external-calendar migration before running the latest client. Follow [external calendar setup and security](external-calendars.md) for provider-neutral ownership, and [Google setup](google-calendar-setup.md) for migration 202609240001, Vault and live Google connections.
