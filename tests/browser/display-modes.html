@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Display modes viewport fixture</title><style>body{margin:0}iframe{display:block;border:0}nav{height:32px}</style></head><body><nav aria-label="Fixture controls"><button id="advance">Advance one hour</button></nav><script type="module">
+if(!import.meta.env.DEV) throw new Error('Development fixture only')
+const params=new URLSearchParams(location.search),sizes={large:[1280,800],medium:[1024,640],small:[960,600]}
+const [width,height]=sizes[params.get('size')]??sizes.large
+const frame=document.createElement('iframe');frame.title='Profile display';frame.width=String(width);frame.height=String(height);frame.src='./display-modes-inner.html?'+params.toString();document.body.append(frame)
+document.getElementById('advance').onclick=()=>frame.contentWindow.postMessage('fixture-advance',location.origin)
+</script></body></html>

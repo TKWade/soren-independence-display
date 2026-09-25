@@ -32,9 +32,9 @@ Open `/admin`, sign in, and create a household with an IANA timezone such as `Am
 
 Click **Load sample week** while the household is empty. The authenticated `seed_sample_household(hid, week_start)` RPC creates a fictional Sample child, Dad, Mom, two homes, School, Pool, Park, reusable activities, one dated weekly schedule, and recurring sleep rules. It is atomic and refuses to overwrite a nonempty household. It needs no privileged key.
 
-The events persist and do not silently regenerate every Monday. Sleep rules repeat. Create a new empty development household to seed another week. Alternatively add profiles under Schedule, populate the libraries, and create your own events.
+The events persist and do not silently regenerate every Monday. Sleep rules repeat. Create a new empty development household to seed another week. Alternatively add profiles under Profiles, populate the libraries, and create your own events.
 
-Open a profile link under Schedule to show `/?household=<uuid>&profile=<uuid>`. These IDs select records; they are not authorization tokens. RLS applies independently.
+Open a profile link under Profiles to show `/?household=<uuid>&profile=<uuid>`. These IDs select records; they are not authorization tokens. RLS applies independently.
 
 ## Admin features
 
@@ -43,7 +43,7 @@ Open a profile link under Schedule to show `/?household=<uuid>&profile=<uuid>`. 
 - Activities: name, short label, image/icon, active status.
 - Schedule: local-event create/edit/delete, date/start/end, activity, people, place, profiles, label/picture override, visibility, and Week primary-activity flag.
 - Home & sleep (under Schedule): repeating weekdays and specific-date overrides.
-- Profiles (under Schedule): name, active status, and display links.
+- Profiles: name, active status, Display & Interaction preferences, and display links.
 
 The event editor applies its visual choices to all selected profiles; the database supports independent per-profile enrichment. Linked events remain read-only in this editor. Library records are deactivated rather than deleted to preserve existing references. Inactive entries remain resolvable for saved events. Event and profile/person updates occur in one database transaction.
 

@@ -17,10 +17,10 @@ async function rows(table: string, householdId: string) {
  }
 }
 export async function loadHousehold(household: HouseholdRow): Promise<HouseholdData> {
- const tables = ['profiles','people','places','activities','calendar_events','external_event_sources','event_visuals','event_people','home_rules','calendar_connections','external_calendars','event_profile_mappings','event_matching_rules']
+ const tables = ['profiles','people','places','activities','calendar_events','external_event_sources','event_visuals','event_people','home_rules','calendar_connections','external_calendars','event_profile_mappings','event_matching_rules','profile_display_preferences']
  const result = await Promise.all(tables.map(table => rows(table, household.id)))
  const data = { household, profiles: result[0], people: result[1], places: result[2], activities: result[3],
-  events: result[4], sources: result[5], visuals: result[6], eventPeople: result[7], homeRules: result[8], imageUrls: {}, integration:{connections:result[9],calendars:result[10],mappings:result[11],matchingRules:result[12]} } as HouseholdData
+  events: result[4], sources: result[5], visuals: result[6], eventPeople: result[7], homeRules: result[8], displayPreferences:result[13], imageUrls: {}, integration:{connections:result[9],calendars:result[10],mappings:result[11],matchingRules:result[12]} } as HouseholdData
  const paths = [...new Set([...data.people,...data.places,...data.activities].flatMap(item => [item.image_path,item.source_image_path].filter((path): path is string => !!path)))]
  if (paths.length) {
   const { data: signed } = await client().storage.from(bucket).createSignedUrls(paths,3600)
@@ -61,3 +61,8 @@ export async function uploadImage(hid: string, file: Blob, group: string, rendit
  return path
 }
 export async function discardUpload(path: string) { await client().storage.from(bucket).remove([path]) }
+
+
+export async function saveDisplayProfile(payload:Record<string,unknown>) {
+ const {error}=await client().rpc('save_display_profile',{payload});if(error) throw error
+}

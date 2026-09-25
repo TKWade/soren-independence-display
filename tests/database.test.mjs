@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 
 const userA='00000000-0000-4000-8000-000000000001'
 const userB='00000000-0000-4000-8000-000000000002'
-const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql']
+const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql','202609240002_profile_display_preferences.sql']
 async function applyMigration(db,name,transform=sql=>sql) {
  let sql=await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')
  if(name==='202609240001_google_calendar.sql') {
@@ -286,5 +286,41 @@ test('late Google migration failure rolls back DDL and function moves; corrected
   const sql=await readFile(new URL('../supabase/migrations/'+migrations[4],import.meta.url),'utf8')
   await db.exec(sql.replace('create extension if not exists supabase_vault with schema vault;',''))
   assert.equal((await db.query("select to_regclass('private.calendar_oauth_pending') pending")).rows[0].pending,'private.calendar_oauth_pending')
+ } finally {await db.close()}
+})
+
+
+test('display preferences backfill Week defaults, validate settings, save atomically and isolate households',async()=>{
+ const db=await database(false)
+ try {
+  await asUser(db,userA)
+  const hid=(await db.query("select public.create_household('Display A','UTC') id")).rows[0].id
+  const pid=(await db.query("insert into public.profiles(household_id,name) values($1,'Soren') returning id",[hid])).rows[0].id
+  await db.exec('reset role;')
+  for(const name of migrations.slice(2)) await applyMigration(db,name)
+  await asUser(db,userA)
+  const preferences=(await db.query('select preferences from public.profile_display_preferences where profile_id=$1',[pid])).rows[0].preferences
+  assert.equal(preferences.displayMode,'week');assert.equal(preferences.allowNavigation,true);assert.equal(preferences.showWho,true);assert.equal(preferences.showWhere,true)
+  const next={...preferences,displayMode:'first-next-then',maxVisibleItems:3,allowNavigation:false,showWho:false,showWhere:false}
+  const payload={id:pid,household_id:hid,name:'Soren',active:true,preferences:next}
+  await db.query('select public.save_display_profile($1)',[JSON.stringify(payload)])
+  assert.deepEqual((await db.query('select preferences from public.profile_display_preferences where profile_id=$1',[pid])).rows[0].preferences,next)
+  for(const change of [{displayMode:'half-day'},{maxVisibleItems:0},{maxVisibleItems:2.5},{autoAdvance:'yes'},{showWho:null},{motionPreference:'flashing'},{version:2}]) {
+   await assert.rejects(db.query('select public.save_display_profile($1)',[JSON.stringify({...payload,name:'Must roll back',preferences:{...next,...change}})]),/check constraint/)
+  }
+  assert.equal((await db.query('select name from public.profiles where id=$1',[pid])).rows[0].name,'Soren')
+  await asUser(db,userB)
+  assert.equal((await db.query('select * from public.profile_display_preferences')).rows.length,0)
+  assert.equal((await db.query('update public.profile_display_preferences set preferences=$1 where profile_id=$2 returning id',[JSON.stringify(preferences),pid])).rows.length,0)
+  await assert.rejects(db.query('select public.save_display_profile($1)',[JSON.stringify(payload)]),/Not authorized/)
+  const other=(await db.query("select public.create_household('Display B','UTC') id")).rows[0].id
+  await assert.rejects(db.query('insert into public.profile_display_preferences(household_id,profile_id) values($1,$2)',[other,pid]),/foreign key|unique/)
+  const otherPid=(await db.query("insert into public.profiles(household_id,name) values($1,'Sibling') returning id",[other])).rows[0].id
+  assert.equal((await db.query('select preferences from public.profile_display_preferences where profile_id=$1',[otherPid])).rows[0].preferences.displayMode,'week')
+  await db.query('delete from public.profiles where id=$1',[otherPid])
+  assert.equal((await db.query('select * from public.profile_display_preferences')).rows.length,0)
+  await db.exec('reset role; set role anon;')
+  await assert.rejects(db.query('select * from public.profile_display_preferences'),/permission denied/)
+  await assert.rejects(db.query('select public.save_display_profile($1)',[JSON.stringify(payload)]),/permission denied/)
  } finally {await db.close()}
 })

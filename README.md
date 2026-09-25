@@ -57,3 +57,7 @@ For a sign-in-free comparison using existing mock fixtures, use `/tests/browser/
 ## External calendar foundation
 
 The CALENDARS admin area now supports selected calendars, per-profile/series visual decisions, deterministic matching rules and an unmatched-event inbox. Scheduling remains provider-owned. Google read-only OAuth, Vault credentials and incremental sync are implemented; Microsoft remains deferred. Apply migrations through 202609240001 and follow [Google setup](docs/google-calendar-setup.md). See [external calendar architecture, security and deployment](docs/external-calendars.md).
+
+## Per-profile display modes
+
+One normalized schedule now feeds the approved Week/Day-B renderer or the new First/Next/Then renderer. Profiles default to Week automatically. Caregiver **Profiles → Display profiles → Display & Interaction** stores mode, context, navigation, timing and motion preferences. See [display architecture, defaults, migration and validation](docs/display-modes.md). Apply `202609240002_profile_display_preferences.sql` before using this client. Each mode reuses the same local/Google schedule; no separate caregiver schedule is needed.

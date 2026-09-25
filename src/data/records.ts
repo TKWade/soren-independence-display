@@ -1,3 +1,4 @@
+import type { DisplayPreferencesRow } from '../types/display'
 import type { CalendarIntegrationData } from '../types/externalCalendar'
 import type { PictureKind } from '../types/calendar'
 import type { LocalRecurrence } from '../lib/recurrence'
@@ -32,5 +33,5 @@ export interface HomeRuleRow {
 export interface HouseholdData {
  household: HouseholdRow; profiles: ProfileRow[]; people: LibraryRow[]; places: LibraryRow[]; activities: LibraryRow[];
  events: EventRow[]; sources: SourceRow[]; visuals: VisualRow[]; eventPeople: EventPersonRow[]; homeRules: HomeRuleRow[];
- integration?:CalendarIntegrationData; imageUrls: Record<string,string>
+ displayPreferences?:DisplayPreferencesRow[]; integration?:CalendarIntegrationData; imageUrls: Record<string,string>
 }
