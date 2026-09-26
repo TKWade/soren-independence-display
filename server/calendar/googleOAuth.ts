@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { GOOGLE_SCOPES, GoogleCalendarAdapter, googleToken, type GoogleConfig, type HttpFetch } from './google.ts'
+import { configurationUrl } from './configuration.ts'
 import { privateRpc } from './googleCredentials.ts'
 export const randomSecret=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),v=>v.toString(16).padStart(2,'0')).join('')
 export async function hashSecret(value:string) {return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),v=>v.toString(16).padStart(2,'0')).join('')}
 export async function pkceChallenge(verifier:string) {return btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier))))).replaceAll('+','-').replaceAll('/','_').replaceAll('=','')}
 export function validateGoogleConfig(config:GoogleConfig) {
- const redirect=new URL(config.redirectUri),back=new URL(config.returnUrl)
+ const redirect=configurationUrl(config.redirectUri),back=configurationUrl(config.returnUrl)
  if(!config.clientId||!config.clientSecret||redirect.protocol!=='https:'||!redirect.pathname.endsWith('/google-oauth/callback')||redirect.search||redirect.hash||back.username||back.password||!(back.protocol==='https:'||(back.protocol==='http:'&&back.hostname==='localhost'))) throw new Error('Google OAuth is not configured')
 }
 export async function beginGoogleOAuth(service:SupabaseClient,config:GoogleConfig,householdId:string,userId:string) {

@@ -1,3 +1,4 @@
+import { calendarInboxChoices } from '../calendar/inboxChoices'
 import { useState } from 'react'
 import type { HouseholdData } from '../data/records'
 import type { RunAction } from './Admin'
@@ -6,12 +7,12 @@ import { saveExternalMapping } from '../data/calendarRepository'
 import { CalendarVisualFields } from './CalendarVisualFields'
 export function CalendarInbox({data,run}:{data:HouseholdData;run:RunAction}) {
  const [reviewed,setReviewed]=useState(false),[selected,setSelected]=useState(''),[version,setVersion]=useState(0)
- const items=calendarInbox(data,reviewed)
+ const items=calendarInboxChoices(data,reviewed)
  const item=items.find(i=>i.event.id===selected)
  return <section><h2>Calendar inbox</h2><p>Unmatched events stay off the child display. One decision can cover every occurrence in a series. Calendar titles and times are read-only.</p>
   <label className="check"><input type="checkbox" checked={reviewed} onChange={e=>{setReviewed(e.target.checked);setSelected('')}}/>Include reviewed events (change a decision)</label>
   {!items.length&&<p>{reviewed?'No events in selected calendars.':'No unmatched events for active profiles.'}</p>}
-  <label>Event or series<select value={selected} onChange={e=>setSelected(e.target.value)}><option value="">Choose event</option>{items.map(i=><option key={i.event.id} value={i.event.id}>{i.event.title||'(Untitled event)'} · {data.integration?.calendars.find(c=>c.id===i.source.calendar_id)?.name} · {i.count} cached occurrence(s)</option>)}</select></label>
+  <label>Event or series<select value={selected} onChange={e=>setSelected(e.target.value)}><option value="">Choose event</option>{items.map(i=><option key={i.event.id} value={i.event.id}>{i.label}</option>)}</select></label>
   {item&&<InboxForm key={selected+version} data={data} item={item} run={run} done={()=>{setSelected('');setVersion(v=>v+1)}}/>}
  </section>
 }

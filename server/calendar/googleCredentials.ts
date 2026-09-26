@@ -1,8 +1,9 @@
+import { databaseError } from './diagnostics.ts'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { GoogleAuthorizationExpired, GoogleCalendarAdapter, googleToken, revokeGoogleToken, type HttpFetch, type GoogleConfig } from './google.ts'
 export async function privateRpc<T>(service:SupabaseClient,operation:string,payload:Record<string,unknown>):Promise<T> {
  const {data,error}=await service.rpc('google_calendar_credentials',{operation,payload})
- if(error) throw new Error('Calendar credential operation failed')
+ if(error) throw databaseError(error)
  return data as T
 }
 export async function googleAdapter(service:SupabaseClient,config:GoogleConfig,connectionId:string,http:HttpFetch=fetch) {

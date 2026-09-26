@@ -65,15 +65,15 @@ export function prepareExternalDisplay(data:HouseholdData):HouseholdData {
  return {...data,events,visuals,eventPeople}
 }
 export function calendarInbox(data:HouseholdData,includeReviewed=false) {
- const groups=new Map<string,{event:EventRow;source:SourceRow;profiles:string[];count:number}>()
+ const groups=new Map<string,{event:EventRow;source:SourceRow;profiles:string[];count:number;occurrences:EventRow[]}>()
  for(const event of [...availableExternalEvents(data)].sort((a,b)=>a.start_time.localeCompare(b.start_time))) {
   const source=data.sources.find(s=>s.event_id===event.id)!
   const profiles=data.profiles.filter(p=>p.active&&!relevanceFor(data,event,source,p.id)).map(p=>p.id)
   if(!includeReviewed&&!profiles.length) continue
   const key=source.calendar_id+':'+seriesKey(source)
   const prior=groups.get(key)
-  if(prior) {prior.count++;prior.profiles=[...new Set([...prior.profiles,...profiles])]}
-  else groups.set(key,{event,source,profiles,count:1})
+  if(prior) {prior.occurrences.push(event);prior.count++;prior.profiles=[...new Set([...prior.profiles,...profiles])]}
+  else groups.set(key,{event,source,profiles,count:1,occurrences:[event]})
  }
  return [...groups.values()]
 }

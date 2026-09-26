@@ -19,7 +19,7 @@ Google is the first live provider. Microsoft remains unavailable. Week and Day a
    This is the currently linked Supabase project. A different project needs its own matching URI in both Google and the server secret. Do not use Supabase Auth's `/auth/v1/callback`: Google Calendar is a separate connection, not the caregiver sign-in provider. Authorized JavaScript origins are not needed for this server authorization-code flow.
 6. Save the client ID and client secret securely. Neither belongs in Vite configuration, source control, browser code or a public table. Use a dedicated OAuth client so revoking it does not affect unrelated integrations.
 
-The authorization request uses `response_type=code`, `access_type=offline`, `prompt=consent select_account`, one-use state and S256 PKCE. Both requested scopes must be granted. No write, broad Calendar, Gmail, OpenID or email scope is requested. The connected account label is its primary calendar ID, ordinarily the account email, discovered using CalendarList; no separate identity API is called. Calendars with only free/busy access are excluded because they cannot supply event details. New calendars default to disabled/ignore.
+The authorization request uses `response_type=code`, `access_type=offline`, `prompt=consent select_account`, one-use state, S256 PKCE and confidential server-side client authentication. Both requested scopes must be granted. No write, broad Calendar, Gmail, OpenID or email scope is requested. The connected account label is its primary calendar ID, ordinarily the account email, discovered using CalendarList; no separate identity API is called. Calendars with only free/busy access are excluded because they cannot supply event details. New calendars default to disabled/ignore.
 
 References: [Google web-server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server), [Calendar scopes](https://developers.google.com/workspace/calendar/api/auth), [OAuth token expiration](https://developers.google.com/identity/protocols/oauth2#expiration).
 
@@ -143,3 +143,47 @@ select exists (
 ```
 
 Only if history incorrectly marks it applied **and the schema confirms rollback**, use `npx supabase migration repair 202609240001 --status reverted --linked` before retrying. Repair changes history only, not schema. Do not mark a failed migration applied or repair other versions. If the Google objects already exist, investigate whether an earlier/partial execution succeeded before changing history. See [Supabase migration repair](https://supabase.com/docs/reference/cli/supabase-migration-repair).
+
+## Restored PKCE and strict configuration (2026-09-26)
+
+The confirmed failure was a trailing newline in GOOGLE_OAUTH_REDIRECT_URI, encoded as %0A, not PKCE. The working redirect remains exactly:
+
+https://pvkrwzieiyuztqupxifj.supabase.co/functions/v1/google-oauth/callback
+
+Each transaction generates 32 cryptographically random bytes with crypto.getRandomValues, encoded as 64 lowercase hexadecimal characters (256 bits, within the RFC 7636 unreserved alphabet and 43–128 character limit). The only challenge method is S256: SHA-256 of the ASCII verifier, base64url without padding. Only the challenge goes into Google's authorization URL; only the server-to-server token POST receives code_verifier. Confidential client authentication, both read-only scopes, offline access and prompt=consent select_account remain unchanged.
+
+The verifier is stored in the private pending OAuth row, tied to household, initiating user, one-use kickoff ticket, state hash and browser-binding hash. The service-only RPC checks the ten-minute expiry and matching state/binding, locks the row, then marks it consumed and clears the stored verifier atomically. It returns the verifier only to the trusted Edge Function for a single exchange. Success deletes the pending row; failure cannot reuse it. Expired attempts cannot be read through the RPC and are purged on subsequent kickoff. Browser roles cannot select the row or execute the RPC. Verifiers are never returned in browser responses, redirects, JavaScript or logs.
+
+URL validation checks raw configuration before URL parsing, which would otherwise normalize some whitespace. Redirect/return URLs reject leading/trailing whitespace, raw whitespace/control characters, backslashes, encoded CR/LF, malformed percent escapes, missing HTTP(S) authority and userinfo. HTTPS is required except for the existing localhost HTTP return URL. Redirects retain the existing callback-path and no-query/fragment restrictions. CALENDAR_ALLOWED_ORIGINS is a comma-separated list of exact origins: no spaces, trailing commas, paths, queries, fragments or userinfo. No malformed value is silently trimmed. This validation is not applied to GOOGLE_CLIENT_SECRET or other credentials. Invalid configuration errors never echo the configured values.
+
+### Migration and deployment
+
+Apply pending migrations through **202609260002_restore_google_pkce.sql**, then redeploy **both** google-oauth and calendar-actions. The prior 202609260001 removal migration is retained so deployments that applied it can upgrade safely; if it is still pending, apply it followed by 202609260002 before deploying. The new migration restores verifier storage and the service-only RPC, with stronger clearing on consumption. It invalidates only pending OAuth attempts; restart Connect Google after deployment. Existing connected accounts, Vault credentials, calendars and app metadata are preserved. No existing migration, remote secret or OAuth client configuration was changed by this fix.
+
+Deployment after migration:
+
+```powershell
+npx supabase functions deploy google-oauth
+npx supabase functions deploy calendar-actions
+```
+
+Local checks:
+
+```powershell
+npx --yes deno check --config supabase/functions/google-oauth/deno.json supabase/functions/google-oauth/index.ts
+npx --yes deno check --config supabase/functions/calendar-actions/deno.json supabase/functions/calendar-actions/index.ts
+```
+
+Tests cover the RFC S256 vector, per-transaction verifier randomness/format, challenge encoding, exact authorization/token parameters, verifier mismatch rejection through a simulated Google token endpoint, replay, private SQL storage and atomic clearing, strict URL/origin validation, and the newline regression before any authorization URL is generated. A live reconnect after deployment verifies Google's actual consent and exchange; local tests never contact Google.
+
+## Safe sync diagnostics
+
+Failed Sync Now requests emit one structured JSON error entry in the calendar-actions Edge Function logs. The event is `calendar_sync_failed`; fields include `stage`, a conservative `errorClass`, a fixed safe message, optional `googleHttpStatus` or validated `databaseCode`, and internal `calendarId` / `connectionId` UUIDs. Database stages additionally identify `operation`: `read_calendar_sync_state` or `commit_calendar_sync`.
+
+Stages: `google_token_refresh` (including private credential read/rotation), `sync_state_read`, `google_delta_fetch`, `google_snapshot_fetch`, `event_normalization`, `database_commit`, or `unknown_sync_failure`. Token refresh and the initial state read are inside the same failure boundary as the remaining sync. Expired Google sync cursors still retry once; successful recovery does not emit a failure entry.
+
+No raw error messages, names, stacks, causes, Supabase details/hints, HTTP bodies, provider calendar IDs, tokens, request headers or event payloads are logged. Messages are fixed by stage, HTTP statuses are bounded integers, database codes must match SQLSTATE/PostgREST code syntax, and identifiers must be UUIDs. Browser responses contain only `{"error":"calendar_sync_failed","stage":"..."}` with HTTP 503. Stored errors remain `Synchronization failed; retry or reconnect.` with `sync_status=error`.
+
+Deploy **calendar-actions** to activate these diagnostics; no database migration is added for diagnostics. Pending PKCE migrations described above are a separate prerequisite for that earlier change. The updated shared Google transport also belongs to google-oauth, so redeploy it too if deploying all current shared-source updates together. Diagnostics do not change Google credentials or OAuth configuration. After deployment, click Sync Now and inspect Supabase → Edge Functions → calendar-actions → Logs for `calendar_sync_failed`.
+
+For the set-based SQL commit optimization and scoped 30-second timeout, apply `202609260003_bulk_calendar_sync.sql`; see [benchmarks, transaction guarantees and deployment](bulk-calendar-sync.md). This migration requires no Edge Function redeployment when the diagnostics above are already deployed.

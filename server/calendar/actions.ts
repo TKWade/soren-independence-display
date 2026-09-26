@@ -1,3 +1,6 @@
+import { syncDiagnostic, syncStage, storedSyncError } from './diagnostics.ts'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { validateAllowedOrigins } from './configuration.ts'
 import { createClient } from '@supabase/supabase-js'
 import type { CalendarConnection, ExternalCalendar } from '../../src/types/externalCalendar.ts'
 import type { CalendarProvider } from '../../src/types/calendar.ts'
@@ -10,6 +13,7 @@ export type ProviderRegistry=Partial<Record<CalendarProvider,(connection:Calenda
 export interface CalendarServerConfig {url:string;anonKey:string;serviceRoleKey:string;allowedOrigins:string[];google?:GoogleConfig}
 /** Authorization is checked before creating an adapter or touching service-only credentials. */
 export function calendarActionHandler(config:CalendarServerConfig,providers:ProviderRegistry={}) {
+ validateAllowedOrigins(config.allowedOrigins)
  return async(request:Request):Promise<Response>=>{
   const origin=request.headers.get('origin')
   const headers:Record<string,string>={'Content-Type':'application/json','Vary':'Origin','Cache-Control':'no-store'}
@@ -20,6 +24,7 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
   if(request.method!=='POST') return reply(405,{error:'method_not_allowed'})
   const authorization=request.headers.get('authorization')??''
   if(!authorization.startsWith('Bearer ')) return reply(401,{error:'sign_in_required'})
+  let syncContext:{calendar:ExternalCalendar;service:SupabaseClient}|undefined
   try {
    const viewer=createClient(config.url,config.anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}})
    const {data:auth,error:authError}=await viewer.auth.getUser(authorization.slice(7))
@@ -50,7 +55,8 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
    if(calendar&&(!calendar.enabled||calendar.behavior==='ignore')) return reply(200,{skipped:true,count:0})
    const factory=providers[conn.provider]??(conn.provider==='google'&&config.google?()=>googleAdapter(service,config.google!,conn.id):undefined)
    if(!factory) return reply(501,{error:'provider_not_configured'})
-   const provider=await factory(conn)
+   if(calendar) syncContext={calendar,service}
+   const provider=await syncStage(conn.provider==='google'?'google_token_refresh':'unknown_sync_failure',()=>factory(conn))
    if(provider.provider!==conn.provider) throw new Error('Wrong provider adapter')
    if(body.action==='listCalendars') {
     const calendars=await provider.listCalendars()
@@ -61,11 +67,16 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
    const previous=await store.readState(calendar!)
    const now=Date.now(),day=86400000
    const window=previous&&Date.parse(previous.window.end)>now+30*day?previous.window:{start:new Date(now-30*day).toISOString(),end:new Date(now+180*day).toISOString()}
-   try {return reply(200,await syncCalendar(provider,calendar!,store,window))}
-   catch {
-    await service.from('external_calendars').update({sync_status:'error',sync_error:'Synchronization failed; retry or reconnect.'}).eq('id',calendar!.id)
-    throw new Error('Sync failed')
+   return reply(200,await syncCalendar(provider,calendar!,store,window))
+  } catch(error) {
+   if(syncContext) {
+    const {calendar,service}=syncContext
+    const diagnostic=syncDiagnostic(error,calendar.id,calendar.connection_id)
+    console.error(JSON.stringify(diagnostic))
+    try {await service.from('external_calendars').update({sync_status:'error',sync_error:storedSyncError}).eq('id',calendar.id)} catch { /* Never mask the original stage with a status-write exception. */ }
+    return reply(503,{error:'calendar_sync_failed',stage:diagnostic.stage})
    }
-  } catch {return reply(503,{error:'calendar_action_failed'})}
+   return reply(503,{error:'calendar_action_failed'})
+  }
  }
 }

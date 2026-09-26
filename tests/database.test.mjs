@@ -1,42 +1,7 @@
-import { PGlite } from '@electric-sql/pglite'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import assert from 'node:assert/strict'
-
-const userA='00000000-0000-4000-8000-000000000001'
-const userB='00000000-0000-4000-8000-000000000002'
-const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql','202609240002_profile_display_preferences.sql']
-async function applyMigration(db,name,transform=sql=>sql) {
- let sql=await readFile(new URL('../supabase/migrations/'+name,import.meta.url),'utf8')
- if(name==='202609240001_google_calendar.sql') {
-  // PGlite cannot load Supabase Vault. This SQL test double tests access/lifecycle, NOT encryption.
-  await db.exec(`create schema vault; create table vault.secrets(id uuid primary key default gen_random_uuid(),secret text);
-   create view vault.decrypted_secrets as select id,secret as decrypted_secret from vault.secrets;
-   create function vault.create_secret(value text) returns uuid language sql as $$ insert into vault.secrets(secret) values(value) returning id $$;
-   create function vault.update_secret(sid uuid,value text) returns void language sql as $$ update vault.secrets set secret=value where id=sid $$;`)
-  sql=sql.replace('create extension if not exists supabase_vault with schema vault;','-- Vault extension replaced by explicit test double above.')
- }
- await db.exec(transform(sql))
-}
-async function database(includeLatest=true) {
- const db=new PGlite()
- await db.exec(`
-  create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
-  create schema auth; create table auth.users(id uuid primary key);
-  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
-  grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;
-  create schema storage;
-  create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
-  create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text,name text);
-  alter table storage.objects enable row level security;
-  grant usage on schema storage to authenticated;
-  grant select,insert,update,delete on storage.objects to authenticated;
-  insert into auth.users values('${userA}'),('${userB}');
- `)
- for(const name of (includeLatest?migrations:migrations.slice(0,2))) await applyMigration(db,name)
- return db
-}
-async function asUser(db,id) { await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub='${id}';`) }
+import { readFile } from 'node:fs/promises'
+import { database, applyMigration, migrations, asUser, userA, userB } from './fixtures/database.mjs'
 
 test('migrations, atomic seed, household RLS, cross-household references and private storage', async()=>{
  const db=await database()
@@ -212,11 +177,11 @@ test('Google OAuth state is one-use, browser/user bound, expiring; Vault credent
   await assert.rejects(db.query('select * from vault.decrypted_secrets'),/permission denied/)
   await db.exec('reset role; set role service_role;')
   const call=async(operation,payload)=>(await db.query('select public.google_calendar_credentials($1,$2) value',[operation,JSON.stringify(payload)])).rows[0].value
-  const begin=()=>call('begin',{householdId:hid,userId:userA,ticketHash:'ticket',verifier:'verifier'})
-  await assert.rejects(call('begin',{householdId:hid,userId:userB,ticketHash:'bad',verifier:'bad'}),/Not a member/)
+  const begin=()=>call('begin',{householdId:hid,userId:userA,ticketHash:'ticket',verifier:'v'.repeat(64)})
+  await assert.rejects(call('begin',{householdId:hid,userId:userB,ticketHash:'bad',verifier:'v'.repeat(64)}),/Not a member/)
   await begin()
   await assert.rejects(call('start',{ticketHash:'ticket',userId:userB,stateHash:'state',bindingHash:'cookie'}),/Invalid OAuth start/)
-  assert.equal((await call('start',{ticketHash:'ticket',userId:userA,stateHash:'state',bindingHash:'cookie'})).verifier,'verifier')
+  assert.deepEqual(await call('start',{ticketHash:'ticket',userId:userA,stateHash:'state',bindingHash:'cookie'}),{verifier:'v'.repeat(64)})
   await assert.rejects(call('consume',{stateHash:'wrong',bindingHash:'cookie'}),/Invalid OAuth state/)
   await assert.rejects(call('consume',{stateHash:'state',bindingHash:'wrong'}),/Invalid OAuth state/)
   const pending=await call('consume',{stateHash:'state',bindingHash:'cookie'})
@@ -322,5 +287,63 @@ test('display preferences backfill Week defaults, validate settings, save atomic
   await db.exec('reset role; set role anon;')
   await assert.rejects(db.query('select * from public.profile_display_preferences'),/permission denied/)
   await assert.rejects(db.query('select public.save_display_profile($1)',[JSON.stringify(payload)]),/permission denied/)
+ } finally {await db.close()}
+})
+
+test('confidential OAuth upgrade removes only PKCE storage and retains one-use, expiry and browser ACLs',async()=>{
+ const db=await database(false)
+ try {
+  for(const name of migrations.slice(2,migrations.indexOf('202609260001_google_confidential_oauth.sql'))) await applyMigration(db,name)
+  await asUser(db,userA)
+  const hid=(await db.query("select public.create_household('Upgrade','UTC') id")).rows[0].id
+  await db.exec('reset role; set role service_role;')
+  const call=async(operation,payload)=>(await db.query('select public.google_calendar_credentials($1,$2) value',[operation,JSON.stringify(payload)])).rows[0].value
+  await call('begin',{householdId:hid,userId:userA,ticketHash:'old',verifier:'obsolete'})
+  await db.exec('reset role;')
+  await applyMigration(db,'202609260001_google_confidential_oauth.sql')
+  assert.equal((await db.query('select count(*)::int n from private.calendar_oauth_pending')).rows[0].n,0)
+  assert.equal((await db.query("select count(*)::int n from information_schema.columns where table_schema='private' and table_name='calendar_oauth_pending' and column_name='verifier'")).rows[0].n,0)
+  await db.exec('set role service_role;')
+  await assert.rejects(call('start',{ticketHash:'old',userId:userA,stateHash:'old-state',bindingHash:'cookie'}),/Invalid OAuth start/)
+  await call('begin',{householdId:hid,userId:userA,ticketHash:'new'})
+  await call('start',{ticketHash:'new',userId:userA,stateHash:'new-state',bindingHash:'cookie'})
+  await assert.rejects(call('start',{ticketHash:'new',userId:userA,stateHash:'replay',bindingHash:'cookie'}),/Invalid OAuth start/)
+  await db.exec('reset role;')
+  const duration=(await db.query('select extract(epoch from expires_at-now()) seconds from private.calendar_oauth_pending')).rows[0].seconds
+  assert.ok(Number(duration)>590&&Number(duration)<=600)
+  await db.exec("update private.calendar_oauth_pending set expires_at=now()-interval '1 second'; set role service_role;")
+  await assert.rejects(call('consume',{stateHash:'new-state',bindingHash:'cookie'}),/Invalid OAuth state/)
+  for(const role of ['anon','authenticated']) {
+   await db.exec(`reset role; set role ${role};`)
+   await assert.rejects(call('begin',{householdId:hid,userId:userA,ticketHash:'denied'}),/permission denied/)
+   await assert.rejects(db.query('select * from private.calendar_oauth_pending'),/permission denied/)
+  }
+ } finally {await db.close()}
+})
+
+test('restored PKCE verifier is private, valid, cleared atomically on consumption and never replayable',async()=>{
+ const db=await database()
+ try {
+  await asUser(db,userA)
+  const hid=(await db.query("select public.create_household('PKCE','UTC') id")).rows[0].id
+  await db.exec('reset role; set role service_role;')
+  const call=async(operation,payload)=>(await db.query('select public.google_calendar_credentials($1,$2) value',[operation,JSON.stringify(payload)])).rows[0].value
+  const payload={householdId:hid,userId:userA,ticketHash:'ticket',verifier:'v'.repeat(64)}
+  for(const verifier of ['', 'short', 'x'.repeat(129), ' '.repeat(64)]) await assert.rejects(call('begin',{...payload,verifier}),/Invalid PKCE verifier/)
+  await call('begin',payload)
+  assert.deepEqual(await call('start',{ticketHash:'ticket',userId:userA,stateHash:'state',bindingHash:'binding'}),{verifier:payload.verifier})
+  await assert.rejects(call('consume',{stateHash:'state',bindingHash:'wrong'}),/Invalid OAuth state/)
+  const consumed=await call('consume',{stateHash:'state',bindingHash:'binding'})
+  assert.equal(consumed.verifier,payload.verifier)
+  await db.exec('reset role;')
+  const row=(await db.query('select verifier,consumed from private.calendar_oauth_pending where id=$1',[consumed.id])).rows[0]
+  assert.deepEqual(row,{verifier:null,consumed:true})
+  await db.exec('set role service_role;')
+  await assert.rejects(call('consume',{stateHash:'state',bindingHash:'binding'}),/Invalid OAuth state/)
+  for(const role of ['anon','authenticated']) {
+   await db.exec(`reset role; set role ${role};`)
+   await assert.rejects(db.query('select verifier from private.calendar_oauth_pending'),/permission denied/)
+   await assert.rejects(call('consume',{stateHash:'state',bindingHash:'binding'}),/permission denied/)
+  }
  } finally {await db.close()}
 })

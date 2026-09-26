@@ -1,3 +1,4 @@
+import { googleHttpError, syncStage } from './diagnostics.ts'
 import type { ExternalCalendar } from '../../src/types/externalCalendar.ts'
 import { normalizeGoogleEvent } from './normalization.ts'
 import { SyncCursorExpired, type CalendarProviderAdapter, type PrivateSyncState, type ProviderCalendar, type SyncPage, type SyncWindow } from './provider.ts'
@@ -7,8 +8,9 @@ export interface GoogleConfig {clientId:string;clientSecret:string;redirectUri:s
 export type HttpFetch=typeof fetch
 export async function googleToken(config:GoogleConfig,parameters:Record<string,string>,http:HttpFetch=fetch) {
  const response=await http('https://oauth2.googleapis.com/token',{method:'POST',redirect:'error',signal:AbortSignal.timeout(15000),headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:config.clientId,client_secret:config.clientSecret,...parameters})})
- const data=await response.json()
- if(!response.ok) {if(data.error==='invalid_grant') throw new GoogleAuthorizationExpired();throw new Error('Google authorization failed')}
+ let data
+ try {data=await response.json()} catch {throw googleHttpError(new Error('Invalid Google token response'),response.status)}
+ if(!response.ok) {if(data.error==='invalid_grant') throw googleHttpError(new GoogleAuthorizationExpired(),response.status);throw googleHttpError(new Error('Google authorization failed'),response.status)}
  if(typeof data.access_token!=='string'||data.token_type?.toLowerCase()!=='bearer') throw new Error('Invalid token response')
  return data as {access_token:string;refresh_token?:string;scope?:string;token_type:string}
 }
@@ -25,10 +27,10 @@ export class GoogleCalendarAdapter implements CalendarProviderAdapter {
  private async get(path:string,params:Record<string,string>):Promise<ListPage> {
   const url=new URL('https://www.googleapis.com/calendar/v3/'+path);url.search=new URLSearchParams(params).toString()
   const result=await this.http(url,{headers:{Authorization:`Bearer ${this.token}`},redirect:'error',signal:AbortSignal.timeout(15000)})
-  if(result.status===410) throw new SyncCursorExpired()
-  if(result.status===401) throw new GoogleAuthorizationExpired()
-  if(!result.ok) throw new Error('Google calendar request failed')
-  return await result.json() as ListPage
+  if(result.status===410) throw googleHttpError(new SyncCursorExpired(),result.status)
+  if(result.status===401) throw googleHttpError(new GoogleAuthorizationExpired(),result.status)
+  if(!result.ok) throw googleHttpError(new Error('Google calendar request failed'),result.status)
+  try {return await result.json() as ListPage} catch {throw googleHttpError(new Error('Invalid Google page'),result.status)}
  }
  private async pages(path:string,params:Record<string,string>) {
   const items:Record<string,unknown>[]=[];const seen=new Set<string>();let pageToken:string|undefined
@@ -55,13 +57,16 @@ export class GoogleCalendarAdapter implements CalendarProviderAdapter {
  private async synchronize(calendar:ExternalCalendar,window:SyncWindow,token?:string):Promise<SyncPage> {
   const path='calendars/'+encodeURIComponent(calendar.external_calendar_id)+'/events'
   // Unexpanded collection keeps infinite recurring series finite. Never combine date filters with syncToken.
-  const delta=await this.pages(path,{maxResults:'2500',singleEvents:'false',showDeleted:'true',...(token?{syncToken:token}:{})})
-  if(!delta.checkpoint) throw new Error('Missing Google sync token')
+  const delta=await syncStage('google_delta_fetch',async()=>{
+   const page=await this.pages(path,{maxResults:'2500',singleEvents:'false',showDeleted:'true',...(token?{syncToken:token}:{})})
+   if(!page.checkpoint) throw new Error('Missing Google sync token')
+   return page
+  })
   if(token&&delta.items.length===0) return {changes:[],checkpoint:{syncToken:delta.checkpoint}}
   // Checkpoint precedes snapshot: concurrent changes are replayed next time, never skipped.
-  const snapshot=await this.pages(path,{maxResults:'2500',singleEvents:'true',showDeleted:'false',timeMin:window.start,timeMax:window.end})
+  const snapshot=await syncStage('google_snapshot_fetch',()=>this.pages(path,{maxResults:'2500',singleEvents:'true',showDeleted:'false',timeMin:window.start,timeMax:window.end}))
   const now=new Date().toISOString()
-  return {changes:snapshot.items.map(item=>this.normalizeEvent(item,calendar,now)),checkpoint:{syncToken:delta.checkpoint},replaceWindow:true}
+  return {changes:await syncStage('event_normalization',async()=>snapshot.items.map(item=>this.normalizeEvent(item,calendar,now))),checkpoint:{syncToken:delta.checkpoint},replaceWindow:true}
  }
  initialSync(calendar:ExternalCalendar,window:SyncWindow) {return this.synchronize(calendar,window)}
  incrementalSync(calendar:ExternalCalendar,state:PrivateSyncState) {
