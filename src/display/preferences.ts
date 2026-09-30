@@ -26,8 +26,8 @@ export function selectSequence(schedule:NormalizedSchedule,now:Date,maxVisibleIt
  const timeline=getTimelineState(day,now)
  return timeline.events.filter(event=>timeline.statuses[event.id]!=='past').slice(0,Math.max(1,Math.min(3,maxVisibleItems))).map((event,index)=>({position:(['FIRST','NEXT','THEN'] as const)[index],event}))
 }
-export function visibleContext(event:DisplayEvent,preferences:ProfileDisplayPreferences) {
- const context=inlineDayContext(event)
+export function visibleContext(event:DisplayEvent,preferences:ProfileDisplayPreferences,includeSleepPeople=false) {
+ const context=inlineDayContext(event,includeSleepPeople)
  return {people:preferences.showWho?context.people:[],place:preferences.showWhere?context.place:undefined}
 }
 export function displayClock(now:Date,anchor:Date,preferences:ProfileDisplayPreferences) {return preferences.autoAdvance?now:anchor}

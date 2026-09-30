@@ -1,3 +1,4 @@
+import {DisplayHeader} from './DisplayHeader'
 import {StandardClock} from './StandardClock'
 import {ActivityTimes} from './ActivityTimes'
 import { calendarDates, calendarViewAllowed, isSubduedDay, navigateCalendar } from './calendarPresentation'
@@ -35,18 +36,14 @@ export function WeekRenderer({schedule,profileName,preferences,now:today,savedVi
   }, [])
   return (
     <main data-display-mode={preferences.displayMode} data-motion={preferences.motionPreference} className="calendar-shell mx-auto flex min-h-dvh max-w-[1800px] flex-col">
-      <header className="page-header flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="brand-mark" aria-hidden="true">☀</div>
-          <div><p className="eyebrow">{profileName.toUpperCase()}’S CALENDAR</p><h1>{selectedDay ? dayLabels(selectedDay.date).name : view==='month'?'MY MONTH':'MY WEEK'}</h1></div>
-        </div>
+      <DisplayHeader profileName={profileName} compact={!standard} context={selectedDay ? dayLabels(selectedDay.date).name : view==='month'?'MY MONTH':'MY WEEK'}>
       {standard&&preferences.showClock&&<StandardClock zone={zone} format={preferences.clockFormat}/>}
       {selectedDay ? (
           <button ref={backButton} className="week-button" onClick={() => setSelectedDate(null)}>
             <span aria-hidden="true">←</span> {view.toUpperCase()}
           </button>
         ) : <p className="month-label">{periodLabel}</p>}
-      </header>
+      </DisplayHeader>
       {!selectedDay&&standard&&(preferences.allowedViews.length>1||preferences.allowCalendarNavigation)&&<nav className="calendar-controls" aria-label="Calendar views and dates">
         {preferences.allowedViews.length>1&&<div>{preferences.allowedViews.map(candidate=><button key={candidate} aria-pressed={view===candidate} onClick={()=>{if(calendarViewAllowed(preferences,candidate)) setView(candidate)}}>{candidate==='week'?'Week':'Month'}</button>)}</div>}
         {preferences.allowCalendarNavigation&&<div><button onClick={()=>setAnchor(navigateCalendar(dates[0],view,-1))}>Previous</button><button onClick={()=>setAnchor(null)}>Today</button><button onClick={()=>setAnchor(navigateCalendar(dates[0],view,1))}>Next</button></div>}

@@ -4,43 +4,49 @@ import { PhotoFrame } from './PhotoFrame'
 import './DayTimelineB.css'
 import type { DaySchedule } from '../types/calendar'
 import { dateKey, dayLabels, getTimelineState } from '../lib/schedule'
-import { PictureTile } from './PictureTile'
+import { EventContextRow } from './EventContextRow'
 import { TodayBadge } from './TodayBadge'
 
 export default function DayTimelineB({ day, now, preferences=defaultDisplayPreferences() }: { day: DaySchedule; now: Date; preferences?:ProfileDisplayPreferences }) {
   const timeline = getTimelineState(day, now)
-  const statusLabels = { now: '▶ NOW', next: '→ NEXT', past: '✓', future: '' }
+  const layout = timeline.events.length === 1 ? 'single' : timeline.events.length === 2 ? 'pair' : 'timeline'
+  const statusLabels = { now: '▶ NOW', next: '→ NEXT', past: '✓ DONE', future: '' }
   return (
     <section className="detail-panel day-variant-b" aria-label={dayLabels(day.date).name + ' timeline'}>
-      <div className="detail-heading flex items-center justify-between">
+      <div className="day-composition" data-layout={layout}>
+      <div className="detail-heading">
         <p>{dayLabels(day.date).displayDate}</p>
         {day.date === dateKey(now, day.timeZone) && <TodayBadge />}
       </div>
       {timeline.events.length === 0 && <div className="display-state" role="status">☀ NO PLANS</div>}
-      <ol className="timeline" aria-label="Day in order">
+      <ol className="timeline" aria-label="Day in order" tabIndex={0}>
         {timeline.events.map((event, index) => {
           const status = timeline.statuses[event.id]
-          const context = visibleContext(event,preferences)
+          const context = visibleContext(event,preferences,true)
           return (
             <li key={event.id} className={`timeline-step status-${status}`}>
               <div className="event-card" role="group" aria-current={status === 'now' ? 'step' : undefined}
                 aria-label={`${event.label}, ${status}. ${preferences.showWho?event.people.map(person => person.name).join(', '):''}, ${preferences.showWhere?event.place.name:''}.`}
                 >
                 <span className="event-status">{statusLabels[status]}</span>
-                <PictureTile item={event.picture} />
-                {preferences.showTimes&&<time className="display-event-time" dateTime={event.startTime}>{formatDisplayTime(event,day.timeZone)}</time>}
-                {(context.people.length>0 || context.place) && <span className="inline-day-context">
-                  {context.people.length>0 && <span className="inline-context-group"><span className="inline-context-heading">WHO</span><span className="inline-context-people">
-                    {context.people.map(person=><span className="inline-context-item" key={person.id}><PhotoFrame url={person.picture.photoUrl} kind={person.picture.kind} badgeKind={person.picture.badgeKind}/><span className="inline-context-label">{person.picture.label}</span></span>)}
-                  </span></span>}
-                  {context.place && <span className="inline-context-group"><span className="inline-context-heading">WHERE</span><span className="inline-context-item"><PhotoFrame url={context.place.picture.photoUrl} kind={context.place.picture.kind} badgeKind={context.place.picture.badgeKind}/><span className="inline-context-label">{context.place.picture.label}</span></span></span>}
-                </span>}
+                <div className="event-body">
+                  <div className="event-image"><PhotoFrame url={event.picture.photoUrl} kind={event.picture.kind} badgeKind={event.picture.badgeKind}/></div>
+                  <div className="event-information">
+                    <h2 className="event-title">{event.label}</h2>
+                    {preferences.showTimes&&<time className="display-event-time" dateTime={event.startTime}>{formatDisplayTime(event,day.timeZone)}</time>}
+                    {(context.people.length>0 || context.place) && <div className="inline-day-context">
+                      {context.place&&<EventContextRow heading="WHERE" pictures={[context.place.picture]}/>}
+                      {context.people.length>0&&<EventContextRow heading="WITH" pictures={context.people.map(person=>person.picture)}/>}
+                    </div>}
+                  </div>
+                </div>
               </div>
               {index < timeline.events.length - 1 && <span className="sequence-arrow" aria-hidden="true">→</span>}
             </li>
           )
         })}
       </ol>
+      </div>
     </section>
   )
 }

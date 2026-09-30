@@ -1,19 +1,107 @@
-/* Default Day view rules, scoped so the development fallback stays unchanged. */
-.day-variant-b .event-card { height: 100%; }
-.day-variant-b .event-card > .picture-tile { flex: 0 0 auto; }
-.day-variant-b .inline-day-context { display: flex; gap: 6px; margin-top: 10px; padding: 8px 2px 2px; border-top: 1px solid #dce3d7; background: #f7f8f2; border-radius: 0 0 12px 12px; }
-.day-variant-b .inline-context-group { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 3px; }
-.day-variant-b .inline-context-group + .inline-context-group { border-left: 1px solid #e2e7dc; padding-left: 5px; }
-.day-variant-b .inline-context-heading { font-size: 10px; font-weight: 650; letter-spacing: .06em; color: #687663; }
-.day-variant-b .inline-context-people { display: flex; flex-wrap: wrap; gap: 3px; }
-.day-variant-b .inline-context-item { display: flex; flex: 1; min-width: 30px; flex-direction: column; align-items: center; }
-.day-variant-b .inline-context-item .picture-frame { height: 48px; margin: 0 0 3px; }
-.day-variant-b .inline-context-label { font-size: 12px; font-weight: 650; line-height: 1.15; overflow-wrap: anywhere; max-width: 100%; }
-.day-variant-b .status-past .inline-day-context { opacity: .55; filter: saturate(.45); }
-@media (max-width: 1050px), (max-height: 650px) {
- .day-variant-b .inline-day-context { gap: 3px; margin-top: 6px; padding-top: 5px; }
- .day-variant-b .inline-context-item .picture-frame { height: 34px; }
- .day-variant-b .inline-context-label { font-size: 10px; }
- .day-variant-b .inline-context-heading { font-size: 9px; }
- .day-variant-b .inline-context-group + .inline-context-group { padding-left: 3px; }
+/* Day-B cards keep their natural height, independent of unused panel space. */
+/* Keep the semantic section, without a viewport-filling card surface. */
+.detail-panel.day-variant-b { min-width: 0; flex: 0 0 auto; border: 0; background: transparent; border-radius: 0; padding: clamp(20px, 3vh, 36px) 0 0; }
+.day-composition { width: 100%; max-width: 1160px; margin-inline: auto; }
+.day-variant-b .detail-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4) var(--space-5); width: fit-content; max-width: 100%; margin: 0 auto var(--space-5); min-height: 40px; }
+.day-variant-b .detail-heading p { margin: 0; }
+.day-variant-b .day-composition[data-layout="single"] .timeline-step { flex-basis: 720px; margin-inline: auto; }
+.day-variant-b .day-composition[data-layout="pair"] .timeline-step { flex: 0 0 min(470px, calc((100% - var(--space-6)) / 2)); min-width: min(290px, 100%); }
+/* Auto margins center a fitting pair but resolve to zero when it must scroll. */
+.day-variant-b .day-composition[data-layout="pair"] .timeline-step:first-child { margin-inline-start: auto; }
+.day-variant-b .day-composition[data-layout="pair"] .timeline-step:last-child { margin-inline-end: auto; }
+.day-variant-b .timeline { align-items: flex-start; overflow-x: auto; gap: var(--space-6); padding: var(--space-2) var(--space-1) var(--space-5); scroll-snap-type: x proximity; }
+.day-variant-b .timeline-step { flex: 0 0 250px; min-width: 0; max-width: 100%; scroll-snap-align: start; }
+.day-variant-b .timeline-step:is(.status-now, .status-next) { flex-basis: 470px; }
+
+/* Card-width queries keep the entire anatomy together at every viewport. */
+.day-variant-b .timeline-step { container-type: inline-size; }
+.day-variant-b .event-card { height: auto; min-height: 0; border: var(--border-default); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-card); text-align: left; overflow: hidden; }
+.day-variant-b .timeline-step .event-card { padding: 0; }
+.day-variant-b .event-status { justify-items: start; margin: 0; min-height: 40px; padding: var(--space-2) var(--space-4); font-size: var(--text-body); border-radius: 0; }
+.day-variant-b .event-status:empty { display: none; }
+.day-variant-b .status-now .event-card { border: 2px solid var(--brand-gold); }
+.day-variant-b .status-now .event-status { background: var(--brand-gold); color: var(--brand-navy-deep); }
+.day-variant-b .status-next .event-card { border: 2px solid var(--brand-blue); }
+.day-variant-b .status-next .event-status { background: var(--brand-sky); color: var(--brand-navy-deep); }
+.day-variant-b .status-past .event-card { color: var(--text-secondary); box-shadow: none; }
+.day-variant-b .status-past .event-image { filter: saturate(.4); }
+.day-variant-b .event-body { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.day-variant-b .event-image { display: grid; place-items: center; background: var(--surface); padding: var(--space-4); }
+.day-variant-b .event-image .picture-frame { height: 170px; margin: 0; }
+.day-variant-b .event-image svg { max-width: 230px; }
+.day-variant-b .event-information { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: var(--space-5); background: var(--surface-muted); border-top: var(--border-default); }
+.day-variant-b .event-title { margin: 0; font-size: clamp(23px, 2.2vw, 32px); line-height: 1.15; font-weight: 750; overflow-wrap: anywhere; }
+.day-variant-b .display-event-time { display: block; text-align: left; color: var(--text-secondary); margin-top: var(--space-2); padding: 0; }
+.day-variant-b .inline-day-context { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-5); }
+.day-variant-b .event-context-row { min-width: 0; }
+.day-variant-b .context-visuals { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); margin-top: var(--space-1); }
+.day-variant-b .context-person { display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
+.day-variant-b .context-person .picture-frame { width: 44px; height: 44px; margin: 0; }
+.inline-context-heading { display: block; font-size: 11px; letter-spacing: .08em; font-weight: 700; color: var(--text-secondary); }
+.inline-context-label { display: block; min-width: 0; font-size: 16px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.day-variant-b .sequence-arrow { width: var(--space-6); top: 120px; color: var(--brand-navy); }
+@container (min-width: 440px) {
+ .day-variant-b .event-body { grid-template-columns: minmax(0, .44fr) minmax(0, .56fr); }
+ .day-variant-b .event-image .picture-frame { height: 220px; }
+ .day-variant-b .event-information { border-top: 0; border-left: var(--border-default); padding: var(--space-4); }
+}
+@container (min-width: 620px) {
+ .day-variant-b .event-information { padding: var(--space-5); }
+}
+@media(max-width:600px) {
+ .day-variant-b .timeline-step:is(.status-now, .status-next) { flex-basis: 290px; }
+}
+
+/* Multi-event cards are a separate compact system. Single-event hero rules stay above. */
+.day-variant-b .day-composition:not([data-layout="single"]) .timeline-step {
+ flex: 0 0 330px;
+ min-width: 0;
+ max-width: 100%;
+}
+.day-variant-b .day-composition:not([data-layout="single"]) .event-body { grid-template-columns: minmax(0, 1fr); }
+.day-variant-b .day-composition:not([data-layout="single"]) .event-image { padding: var(--space-3); }
+.day-variant-b .day-composition:not([data-layout="single"]) .event-image .picture-frame { height: 140px; }
+.day-variant-b .day-composition:not([data-layout="single"]) .event-information {
+ padding: var(--space-4); border-left: 0; border-top: var(--border-default);
+}
+.day-variant-b .day-composition:not([data-layout="single"]) .event-title { font-size: 24px; }
+.day-variant-b .day-composition:not([data-layout="single"]) .inline-day-context { margin-top: var(--space-4); gap: var(--space-3); }
+.day-variant-b .day-composition:not([data-layout="single"]) .context-person .picture-frame { width: 38px; height: 38px; }
+/* Phones use a complete vertical list, with a single page scroll direction. */
+@media (max-width:600px) and (orientation:portrait), (max-height:500px) and (orientation:landscape) {
+ .day-variant-b .day-composition:not([data-layout="single"]) .timeline {
+  flex-direction: column; align-items: center; overflow: visible; scroll-snap-type: none; gap: var(--space-6);
+ }
+ .day-variant-b .day-composition:not([data-layout="single"]) .timeline-step {
+  flex: 0 0 auto; width: min(330px, 100%); margin-inline: auto;
+ }
+ .day-variant-b .day-composition:not([data-layout="single"]) .sequence-arrow {
+  left: calc(50% - 16px); top: 100%; height: var(--space-6); transform: rotate(90deg);
+ }
+}
+@media (max-height:500px) and (orientation:landscape) {
+ .calendar-shell:has(.day-composition:not([data-layout="single"])) .display-header { padding-bottom: var(--space-2); }
+ .day-variant-b:has(.day-composition:not([data-layout="single"])) { padding-top: var(--space-2); }
+ .day-variant-b .day-composition:not([data-layout="single"]) .detail-heading { margin-bottom: var(--space-2); }
+ .day-variant-b .day-composition:not([data-layout="single"]) .event-image { padding: var(--space-2); }
+ .day-variant-b .day-composition:not([data-layout="single"]) .event-image .picture-frame { height: 100px; }
+ .day-variant-b .day-composition:not([data-layout="single"]) .event-information { padding: var(--space-3); }
+}
+/* Reserve the same status band for unlabeled future cards to align all images/titles. */
+.day-variant-b .day-composition:not([data-layout="single"]) .event-status:empty { display: grid; }
+
+/* Vertical Day lists participate fully in document flow, including final-card clearance. */
+@media (max-width:600px) and (orientation:portrait), (max-height:500px) and (orientation:landscape) {
+ .calendar-shell:has(.day-composition:not([data-layout="single"])) {
+  display: block; height: auto; min-height: 0; max-height: none; overflow: visible;
+ }
+ .day-variant-b:has(.day-composition:not([data-layout="single"])),
+ .day-variant-b .day-composition:not([data-layout="single"]),
+ .day-variant-b .day-composition:not([data-layout="single"]) .timeline {
+  height: auto; max-height: none; overflow: visible;
+ }
+ .day-variant-b .day-composition:not([data-layout="single"]) .timeline {
+  overflow-y: visible; padding-bottom: max(var(--space-6), env(safe-area-inset-bottom, 0px));
+ }
+ .day-variant-b .day-composition:not([data-layout="single"]) .timeline-step { height: auto; max-height: none; flex-shrink: 0; }
 }
