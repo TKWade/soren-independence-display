@@ -47,11 +47,10 @@
 .activity-time-title {min-width:0;overflow-wrap:anywhere;white-space:normal;}
 @media(max-width:600px){.activity-time-row{flex-direction:column;gap:1px}.page-header{flex-wrap:wrap}}
 
-/* Shared SOREN shell. No logo is synthesized; the text lockup is replaceable. */
+/* Shared SOREN shell; branding is sized independently from display geometry. */
 .display-header { display:grid; grid-template-columns:minmax(100px,1fr) minmax(0,2fr) auto; align-items:center; gap:var(--space-5); padding-bottom:var(--space-5); }
 .display-brand { display:flex; flex-direction:column; gap:var(--space-1); }
 .brand-name { font-size:26px; font-weight:800; letter-spacing:.12em; line-height:1; }
-.brand-tagline { font-size:var(--text-caption); color:var(--text-secondary); }
 .display-heading { min-width:0; }
 .display-heading .eyebrow { letter-spacing:.02em; font-size:14px; overflow-wrap:anywhere; }
 .display-heading h1 { font-size:var(--text-heading); line-height:1.15; overflow-wrap:anywhere; }

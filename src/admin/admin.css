@@ -18,7 +18,6 @@
 .admin-identity { display: flex; align-items: center; gap: var(--space-6); flex-wrap: wrap; }
 .admin-shell .display-brand { display: flex; flex-direction: column; gap: var(--space-1); }
 .admin-shell .brand-name { font-size: 25px; font-weight: 800; letter-spacing: .1em; }
-.admin-shell .brand-tagline { font-size: 13px; color: var(--text-secondary); }
 .admin-toolbar { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; border-bottom: var(--border-default); padding-bottom: var(--space-4); }
 .admin-toolbar label { flex: 1 1 250px; max-width: 440px; margin-right: auto; }
 .admin-shell nav { display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; padding: var(--space-2) var(--space-1); margin-top: var(--space-4); }
@@ -66,11 +65,8 @@
  .admin-shell { padding: var(--space-4); }
  .admin-shell .form-grid { grid-template-columns: 1fr; }
  .admin-shell section { padding: var(--space-4); }
- .admin-shell .brand-tagline { display: none; }
  .admin-identity { gap: var(--space-2); }
  .admin-shell h1 { font-size: 21px; }
  .admin-header { align-items: start; }
  .admin-shell .sync-status dl { grid-template-columns: 1fr; }
 }
-
-.admin-shell .admin-logo { width: 150px; height: auto; object-fit: contain; }

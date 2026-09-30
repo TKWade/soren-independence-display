@@ -8,7 +8,7 @@ Admin imports the existing Phase 1 tokens. Navy supplies structure and primary a
 
 The caregiver header reuses DisplayBrand and adds Caregiver Portal. Household selection stays prominent; Open display and Refresh are outlined secondary actions, while Sign out is quiet. Both navigation rows remain single-line, horizontally scrollable on narrow screens, keyboard operable, and retain aria-current.
 
-No approved logo was found. The existing text placeholder remains. Expected approved asset: `public/brand/soren-logo.svg` (PNG also supported). Pass `/brand/soren-logo.svg` as CaregiverHeader's logoSrc when the approved file arrives. The image keeps its natural aspect ratio. The existing tagline is secondary and hides on narrow phones. No imitation logo was drawn.
+The approved logo is now `public/brand/soren-logo.png`. CaregiverHeader uses the shared DisplayBrand image component. The artwork already includes the tagline, so no separate tagline is rendered. Image errors replace the image with plain SOREN text. Favicon and square PWA icons are unchanged.
 
 ## Forms and workflows
 
@@ -37,3 +37,12 @@ These are browser viewport checks, not physical-device/browser-chrome certificat
 Child regression checks at 1280x800 covered rolling Week, single/multiple Day events, Standard Week, Month and First/Next/Then. No page overflow occurred. Wrapped rolling cards remained 483px high, the single Sleep hero 720x295px, and multiple Day cards 330px wide with 411-413px natural heights. No child component, shared token value or child CSS was modified in Phase 2.
 
 Validation: all 140 tests passed, including Admin navigation/presentation, safe deletion, calendar integration, scheduling and display regressions; lint and production/PWA build passed. Focused Admin tests also passed separately. There are no remaining old-green declarations in admin.css. Shared image-preview geometry in index.css remains intentionally in use; Admin overrides its surface/border colors locally. No commit or push.
+
+
+## Approved logo integration
+
+DisplayBrand uses an actual image with intrinsic 1774x887 dimensions, height:auto, max-width:100% and object-fit:contain. Alt text includes SOREN and its tagline. The supplied file is not cropped, redrawn or distorted. Its intrinsic dimensions reserve space while loading. Child logo width is clamp(150px,16vw,230px), with clamp(120px,34vw,160px) below 600px and 150px in short landscape. Admin uses clamp(120px,14vw,180px), capped to 120px on phone and short landscape.
+
+Measured child/Admin widths: 1440 desktop 230/180px; 1280x800 205/179px; 1024 tablet 164/143px; 768 portrait 150/120px; 412 portrait 140/120px; 844x390 150/120px. All retained the full 2:1 image ratio, without header collisions or page overflow. The header accommodates the image's natural height; no fixed extra height or spacing was added. Existing header grid positions, clocks and navigation remain unchanged.
+
+Single-event Day remained 720x295px; multi-event cards remained 330px wide and 411-413px tall at 1280x800. Standard Week/Month retained clocks and controls. First/Next/Then intentionally retains its existing header-free geometry. The fixture query `?logoFallback` deliberately requests a missing logo and verified that only SOREN text remains, with no image element/broken icon. The production PWA precaches the new PNG via the existing image glob; its manifest icons and favicon remain unchanged.

@@ -1,0 +1,11 @@
+.display-brand { min-width: 0; max-width: 100%; }
+.brand-logo { display: block; width: clamp(150px, 16vw, 230px); max-width: 100%; height: auto; object-fit: contain; }
+.admin-shell .brand-logo { width: clamp(120px, 14vw, 180px); }
+@media (max-width: 600px) {
+ .brand-logo { width: clamp(120px, 34vw, 160px); }
+ .admin-shell .brand-logo { width: 120px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+ .brand-logo { width: 150px; }
+ .admin-shell .brand-logo { width: 120px; }
+}

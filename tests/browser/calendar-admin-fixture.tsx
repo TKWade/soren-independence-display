@@ -20,7 +20,7 @@ export function CalendarAdminFixture() {
  const [tab,setTab]=useState('calendars')
  const data=fixture as unknown as HouseholdData
  const run=async()=>{setMessage('Save disabled in this read-only fixture.');return false}
- return <main className="admin-shell"><CaregiverHeader><button className="quiet" disabled>Sign out</button></CaregiverHeader>
+ return <main className="admin-shell"><CaregiverHeader logoSrc={new URLSearchParams(window.location.search).has('logoFallback')?'/brand/missing-test-logo.png':undefined}><button className="quiet" disabled>Sign out</button></CaregiverHeader>
  <p className="info-panel">Fictional, read-only data. No backend calls or saves.</p>
  <div className="admin-toolbar"><label>Household<select><option>Test household</option></select></label><a className="secondary" href="/tests/browser/index.html?view=rolling">Open display</a><button className="secondary" onClick={()=>setMessage('Read-only fixture refreshed.')}>Refresh</button></div>
  <nav aria-label="Caregiver sections">{['profiles','people','places','activities','schedule','home','calendars'].map(name=><button key={name} aria-current={tab===name?'page':undefined} onClick={()=>setTab(name)}>{name==='home'?'HOME & SLEEP':name.toUpperCase()}</button>)}</nav>

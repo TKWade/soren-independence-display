@@ -44,7 +44,8 @@ test('Day-B preserves ordered states and renders context once inside natural-siz
   const header=renderToStaticMarkup(createElement(DisplayHeader,{profileName:'Siv',context:'Tuesday'},createElement('button',null,'Week')))
   assert.match(header,/SOREN/);assert.match(header,/Soarin’/);assert.match(header,/Siv’s Calendar/);assert.match(header,/Tuesday/)
   const compact=renderToStaticMarkup(createElement(DisplayHeader,{profileName:'Soren',context:'MY WEEK',compact:true},null))
-  assert.doesNotMatch(compact,/Soarin’/)
+  assert.match(compact,/src="\/brand\/soren-logo.png"/)
+  assert.doesNotMatch(compact,/brand-tagline|<span/)
  }finally{await server.close()}
  const css=await readFile('src/components/DayTimelineB.css','utf8')
  assert.match(css,/\.day-variant-b \.event-card \{ height: auto;/)

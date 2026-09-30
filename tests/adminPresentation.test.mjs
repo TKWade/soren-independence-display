@@ -13,6 +13,7 @@ test('Admin presentation keeps calendar status and deletion safeguards explicit'
  try {
   const {DeletionDialog}=await server.ssrLoadModule('/src/admin/DeleteControl.tsx')
   const {CalendarAdmin}=await server.ssrLoadModule('/src/admin/CalendarAdmin.tsx')
+  const {DisplayBrand}=await server.ssrLoadModule('/src/display/DisplayHeader.tsx')
   const {CaregiverHeader}=await server.ssrLoadModule('/src/admin/CaregiverHeader.tsx')
   const render=(Component,props)=>renderToStaticMarkup(createElement(Component,props))
   const dialog={entity:'profiles',id:'profile',label:'Permanent delete',preview:{name:'Example',dependencies:{shared_events:4},blocked:false},typed:'',setTyped(){},close(){},confirm(){}}
@@ -38,7 +39,14 @@ test('Admin presentation keeps calendar status and deletion safeguards explicit'
   assert.match(html,/Automatic sync inactive/)
   assert.match(html,/disabled="">Sync Now/)
   assert.match(render(CaregiverHeader,{}),/Caregiver Portal/)
-  assert.match(render(CaregiverHeader,{logoSrc:'/brand/soren-logo.svg'}),/alt="SOREN"/)
+  for(const compact of [true,false]) {
+   const brand=render(DisplayBrand,{compact})
+   assert.match(brand,/src="\/brand\/soren-logo.png"/)
+   assert.match(brand,/width="1774" height="887"/)
+   assert.equal((brand.match(/<img /g)||[]).length,1)
+   assert.doesNotMatch(brand,/brand-tagline|<span/)
+  }
+  assert.match(render(CaregiverHeader,{logoSrc:'/brand/soren-logo.png'}),/alt="SOREN[^"]*"/)
  } finally {
   if(oldWindow===undefined)delete globalThis.window;else globalThis.window=oldWindow
   await server.close()
