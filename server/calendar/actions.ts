@@ -1,11 +1,10 @@
-import { syncDiagnostic, syncStage, storedSyncError } from './diagnostics.ts'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { syncStage } from './diagnostics.ts'
 import { validateAllowedOrigins } from './configuration.ts'
 import { createClient } from '@supabase/supabase-js'
 import type { CalendarConnection, ExternalCalendar } from '../../src/types/externalCalendar.ts'
 import type { CalendarProvider } from '../../src/types/calendar.ts'
-import { syncCalendar, type CalendarProviderAdapter } from './provider.ts'
-import { SupabaseSyncStore } from './supabaseStore.ts'
+import { type CalendarProviderAdapter } from './provider.ts'
+import { runCalendarSync } from './runSync.ts'
 import { beginGoogleOAuth } from './googleOAuth.ts'
 import { disconnectGoogle, googleAdapter } from './googleCredentials.ts'
 import type { GoogleConfig } from './google.ts'
@@ -24,7 +23,6 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
   if(request.method!=='POST') return reply(405,{error:'method_not_allowed'})
   const authorization=request.headers.get('authorization')??''
   if(!authorization.startsWith('Bearer ')) return reply(401,{error:'sign_in_required'})
-  let syncContext:{calendar:ExternalCalendar;service:SupabaseClient}|undefined
   try {
    const viewer=createClient(config.url,config.anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}})
    const {data:auth,error:authError}=await viewer.auth.getUser(authorization.slice(7))
@@ -55,7 +53,7 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
    if(calendar&&(!calendar.enabled||calendar.behavior==='ignore')) return reply(200,{skipped:true,count:0})
    const factory=providers[conn.provider]??(conn.provider==='google'&&config.google?()=>googleAdapter(service,config.google!,conn.id):undefined)
    if(!factory) return reply(501,{error:'provider_not_configured'})
-   if(calendar) syncContext={calendar,service}
+   if(calendar) {const result=await runCalendarSync(service,calendar,conn,()=>factory(conn));return reply('error' in result?503:200,result)}
    const provider=await syncStage(conn.provider==='google'?'google_token_refresh':'unknown_sync_failure',()=>factory(conn))
    if(provider.provider!==conn.provider) throw new Error('Wrong provider adapter')
    if(body.action==='listCalendars') {
@@ -63,19 +61,8 @@ export function calendarActionHandler(config:CalendarServerConfig,providers:Prov
     const {error}=await service.rpc('cache_provider_calendars',{connection:conn.id,calendars});if(error) throw error
     return reply(200,{count:calendars.length})
    }
-   const store=new SupabaseSyncStore(service)
-   const previous=await store.readState(calendar!)
-   const now=Date.now(),day=86400000
-   const window=previous&&Date.parse(previous.window.end)>now+30*day?previous.window:{start:new Date(now-30*day).toISOString(),end:new Date(now+180*day).toISOString()}
-   return reply(200,await syncCalendar(provider,calendar!,store,window))
-  } catch(error) {
-   if(syncContext) {
-    const {calendar,service}=syncContext
-    const diagnostic=syncDiagnostic(error,calendar.id,calendar.connection_id)
-    console.error(JSON.stringify(diagnostic))
-    try {await service.from('external_calendars').update({sync_status:'error',sync_error:storedSyncError}).eq('id',calendar.id)} catch { /* Never mask the original stage with a status-write exception. */ }
-    return reply(503,{error:'calendar_sync_failed',stage:diagnostic.stage})
-   }
+   return reply(400,{error:'invalid_action'})
+  } catch {
    return reply(503,{error:'calendar_action_failed'})
   }
  }

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 const userA='00000000-0000-4000-8000-000000000001'
 const userB='00000000-0000-4000-8000-000000000002'
-const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql','202609240002_profile_display_preferences.sql','202609260001_google_confidential_oauth.sql','202609260002_restore_google_pkce.sql','202609260003_bulk_calendar_sync.sql','202609290001_profile_calendar_views.sql','202609290002_external_home_sleep.sql','202609290003_profile_home_preferences.sql']
+const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql','202609240002_profile_display_preferences.sql','202609260001_google_confidential_oauth.sql','202609260002_restore_google_pkce.sql','202609260003_bulk_calendar_sync.sql','202609290001_profile_calendar_views.sql','202609290002_external_home_sleep.sql','202609290003_profile_home_preferences.sql','202609300001_automatic_calendar_sync.sql','202609300002_calendar_sync_cron.sql','202609300003_standard_display_time.sql','202609300004_safe_deletion.sql']
 async function applyMigration(db,name,transform=sql=>sql) {
  let sql=await readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8')
  if(name==='202609240001_google_calendar.sql') {
@@ -13,6 +13,14 @@ async function applyMigration(db,name,transform=sql=>sql) {
    create function vault.create_secret(value text) returns uuid language sql as $$ insert into vault.secrets(secret) values(value) returning id $$;
    create function vault.update_secret(sid uuid,value text) returns void language sql as $$ update vault.secrets set secret=value where id=sid $$;`)
   sql=sql.replace('create extension if not exists supabase_vault with schema vault;','-- Vault extension replaced by explicit test double above.')
+ }
+ if(name==='202609300002_calendar_sync_cron.sql') {
+  // PGlite test doubles validate configuration/security; hosted pg_cron/pg_net are verified after deployment.
+  await db.exec(`alter table vault.secrets add column name text;create or replace view vault.decrypted_secrets as select id,secret as decrypted_secret,name from vault.secrets;
+   create schema cron;create table cron.job(jobid bigint generated always as identity,jobname text unique,schedule text,command text);
+   create function cron.schedule(n text,s text,c text) returns bigint language sql as $$insert into cron.job(jobname,schedule,command) values(n,s,c) on conflict(jobname) do update set schedule=excluded.schedule,command=excluded.command returning jobid$$;
+   create schema net;create function net.http_post(url text,headers jsonb,body jsonb,timeout_milliseconds integer) returns bigint language sql as $$select 1::bigint$$;`)
+  sql=sql.replace('create extension if not exists pg_cron;','').replace('create extension if not exists pg_net with schema extensions;','')
  }
  await db.exec(transform(sql))
 }

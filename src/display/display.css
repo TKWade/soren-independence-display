@@ -39,3 +39,10 @@
 .month-day .picture-frame { height:42px; margin:3px; }
 .month-day .picture-label { font-size:12px; }
 .day-variant-b div.event-card { text-align:center; }
+
+.standard-clock {font-size:clamp(18px,3vw,32px);font-weight:700;white-space:nowrap;}
+.activity-times {display:flex;flex-direction:column;gap:5px;text-align:left;font-size:clamp(11px,1.1vw,15px);width:100%;margin:8px 0;}
+.activity-time-row {display:flex;gap:5px;min-width:0;}
+.activity-time {flex-shrink:0;font-weight:700;white-space:nowrap;}
+.activity-time-title {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:600px){.activity-time-row{flex-direction:column;gap:1px}.page-header{flex-wrap:wrap}}

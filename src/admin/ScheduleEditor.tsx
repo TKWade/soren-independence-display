@@ -1,10 +1,11 @@
+import {DeleteControl} from './DeleteControl'
 import { useState } from 'react'
 import { Temporal } from '@js-temporal/polyfill'
 import { RepeatFields } from './RepeatFields'
 import { validateRecurrence, type LocalRecurrence } from '../lib/recurrence'
 import type { HouseholdData } from '../data/records'
 import type { RunAction } from './Admin'
-import { removeRecord, saveEvent } from '../data/repository'
+import { saveEvent } from '../data/repository'
 import { atLocalTime, dateInZone, localInput } from '../lib/time'
 export function ScheduleEditor({data,run}:{data:HouseholdData;run:RunAction}) {
  const [selected,setSelected]=useState('')
@@ -19,7 +20,7 @@ export function ScheduleEditor({data,run}:{data:HouseholdData;run:RunAction}) {
  const start=event ? localInput(event.start_time,zone) : dateInZone(new Date(),zone)+'T08:00'
  const end=event?.end_time ? localInput(event.end_time,zone) : ''
  const personIds=data.eventPeople.filter(row=>visuals.some(v=>v.id===row.visual_id)).map(row=>row.person_id)
- return <section><h2>Schedule</h2><p>Times are in {zone}. Visual choices here apply to every selected profile. Linked calendar events are read-only until the integration milestone.</p>
+ return <section><h2>Schedule</h2><p>Times are in {zone}. Visual choices here apply to every selected profile. Delete provider-owned events in the connected calendar. Use Calendar Inbox to Ignore or remove app mappings.</p>
   <label>Edit event<select value={selected} onChange={e=>{setSelected(e.target.value);setStartDate('');setError('')}}><option value="">New event</option>{[...data.events].sort((a,b)=>a.start_time.localeCompare(b.start_time)).map(row=><option key={row.id} value={row.id}>{localInput(row.start_time,zone).replace('T',' ')} · {row.title}{row.source_kind==='external'?' (linked)':''}</option>)}</select></label>
   <form key={selected+version} onSubmit={e=>{
    e.preventDefault();const values=new FormData(e.currentTarget)
@@ -60,7 +61,7 @@ export function ScheduleEditor({data,run}:{data:HouseholdData;run:RunAction}) {
      <label>Activity<select name="activity" required defaultValue={visual?.activity_id ?? ''}><option value="">Choose activity</option>{data.activities.filter(a=>a.active||a.id===visual?.activity_id).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
      <label>Place<select name="place" required defaultValue={visual?.place_id ?? ''}><option value="">Choose place</option>{data.places.filter(p=>p.active||p.id===visual?.place_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
      <label>Child label override (optional)<input name="label" maxLength={20} defaultValue={visual?.label_override ?? ''}/></label>
-     <label>Use person picture (e.g. pickup)<select name="picture_person" defaultValue={visual?.picture_person_id ?? ''}><option value="">Use activity/place picture</option>{data.people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+     <label>Use person picture (e.g. pickup)<select name="picture_person" defaultValue={visual?.picture_person_id ?? ''}><option value="">Use activity/place picture</option>{data.people.filter(p=>p.active||p.id===visual?.picture_person_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
     </div>
     <RepeatFields initial={event?.local_recurrence} startDate={startDate||start.slice(0,10)}/>
     {error && <p role="alert">{error}</p>}
@@ -69,7 +70,7 @@ export function ScheduleEditor({data,run}:{data:HouseholdData;run:RunAction}) {
     <label className="check"><input name="visible" type="checkbox" defaultChecked={visual?.visible ?? true}/>Show on child display</label>
     <label className="check"><input name="primary" type="checkbox" defaultChecked={visual?.is_primary ?? false}/>Main activity for the Week summary</label>
     <button>Save event</button>
-    {event && <button type="button" className="danger" onClick={()=>{if(window.confirm('Delete this event or entire series for all profiles?')) void run(async()=>{await removeRecord('calendar_events',event.id,data.household.id);setSelected('');setStartDate('');setError('')},'Event deleted.')}}>Delete event</button>}
+    {event&&!isLinked&&<DeleteControl entity="calendar_events" id={event.id} householdId={data.household.id} run={run} label={event.local_recurrence?'Delete entire series':'Delete event'} done={()=>{setSelected('');setStartDate('');setError('')}}/>}
    </fieldset>
    {event && <button type="button" className="secondary" onClick={()=>{setSelected('');setStartDate('');setError('')}}>Cancel edit</button>}
   </form>

@@ -33,7 +33,7 @@ export function availableExternalEvents(data:HouseholdData) {
   if(event.source_kind!=='external'||event.external_status==='cancelled'||event.external_kind==='seriesMaster') return false
   const source=data.sources.find(s=>s.event_id===event.id)
   const calendar=data.integration?.calendars.find(c=>c.id===source?.calendar_id)
-  return calendar?.enabled&&calendar.behavior==='evaluate'&&data.integration?.connections.some(c=>c.id===calendar.connection_id&&c.status==='connected')
+  return calendar?.enabled&&calendar.behavior==='evaluate'&&data.integration?.connections.some(c=>c.id===calendar.connection_id&&(c.status==='connected'||c.status==='needs_authorization'))
  })
 }
 /** No persisted copies of automatic enrichment: rules re-evaluate deterministically, manual decisions win. */

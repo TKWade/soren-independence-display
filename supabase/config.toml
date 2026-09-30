@@ -7,3 +7,10 @@ verify_jwt = false
 [functions.google-oauth]
 # Google redirects have no Supabase JWT; one-use state + HttpOnly browser binding are mandatory.
 verify_jwt = false
+
+[functions.calendar-scheduled]
+# Dedicated high-entropy scheduler secret, no browser credentials or caller-selected targets.
+verify_jwt = false
+
+[functions.household-maintenance]
+verify_jwt = false

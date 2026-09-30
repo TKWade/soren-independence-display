@@ -16,6 +16,9 @@ export interface ProfileDisplayPreferences {
  autoAdvance: boolean
  showWho: boolean
  showWhere: boolean
+ showActivityTimes:boolean
+ showClock:boolean
+ clockFormat:'12h'|'24h'
  showTimes: boolean
  motionPreference: 'normal' | 'reduced' | 'none'
  audioEnabled: boolean

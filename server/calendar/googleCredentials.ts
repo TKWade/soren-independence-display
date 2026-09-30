@@ -6,7 +6,8 @@ export async function privateRpc<T>(service:SupabaseClient,operation:string,payl
  if(error) throw databaseError(error)
  return data as T
 }
-export async function googleAdapter(service:SupabaseClient,config:GoogleConfig,connectionId:string,http:HttpFetch=fetch) {
+export async function googleAdapter(service:SupabaseClient,config:GoogleConfig,connectionId:string,http?:HttpFetch,deadline=Date.now()+90000) {
+ http??=((input,init)=>fetch(input,{...init,signal:AbortSignal.timeout(Math.max(1,Math.min(45000,deadline-Date.now())))}))
  const credential=await privateRpc<{refreshToken:string;secretId:string}>(service,'read',{connectionId})
  try {
   const tokens=await googleToken(config,{grant_type:'refresh_token',refresh_token:credential.refreshToken},http)
@@ -17,7 +18,7 @@ export async function googleAdapter(service:SupabaseClient,config:GoogleConfig,c
   throw error
  }
 }
-export async function disconnectGoogle(service:SupabaseClient,connectionId:string,http:HttpFetch=fetch) {
+export async function disconnectGoogle(service:SupabaseClient,connectionId:string,http:HttpFetch=(input,init)=>fetch(input,{...init,signal:AbortSignal.timeout(45000)})) {
  // Remove local authorization first, even if Google is unreachable. Never return the token to a client.
  const credential=await privateRpc<{refreshToken?:string}>(service,'disconnect',{connectionId})
  let revoked=false

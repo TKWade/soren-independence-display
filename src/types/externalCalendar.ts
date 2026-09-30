@@ -6,7 +6,7 @@ export interface CalendarConnection {
 export interface ExternalCalendar {
  id:string; household_id:string; connection_id:string; external_calendar_id:string;
  name:string; time_zone:string; enabled:boolean; behavior:'evaluate'|'ignore';
- last_synced_at:string|null; sync_status:'idle'|'error'; sync_error:string|null
+ last_synced_at:string|null; sync_status:'idle'|'running'|'error'; sync_error:string|null;last_attempted_at?:string|null;last_error_category?:string|null;consecutive_failures?:number
 }
 /** Safe sync summary. Opaque cursors and credentials exist only in the trusted server layer. */
 export type CalendarSyncState = Pick<ExternalCalendar,'id'|'last_synced_at'|'sync_status'|'sync_error'>

@@ -1,0 +1,3 @@
+import { scheduledSyncHandler } from '../../../server/calendar/scheduled.ts'
+declare const EdgeRuntime:{waitUntil(task:Promise<unknown>):void}
+Deno.serve(scheduledSyncHandler({url:Deno.env.get('SUPABASE_URL')??'',anonKey:'',serviceRoleKey:Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')??'',allowedOrigins:[],schedulerSecret:Deno.env.get('CALENDAR_SCHEDULER_SECRET')??'',google:{clientId:Deno.env.get('GOOGLE_CLIENT_ID')??'',clientSecret:Deno.env.get('GOOGLE_CLIENT_SECRET')??'',redirectUri:Deno.env.get('GOOGLE_OAUTH_REDIRECT_URI')??'',returnUrl:Deno.env.get('GOOGLE_OAUTH_RETURN_URL')??''}}, {}, undefined, task=>EdgeRuntime.waitUntil(task)))

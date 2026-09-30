@@ -20,6 +20,8 @@ for(const stage of ['google_token_refresh','sync_state_read','google_delta_fetch
     if(method==='PATCH'){stored.push(JSON.parse(options.body));return new Response(null,{status:204})}
     return Response.json(calendar)
    }
+   if(url.pathname.endsWith('/claim_calendar_sync'))return Response.json('00000000-0000-4000-8000-000000000003')
+   if(url.pathname.endsWith('/finish_calendar_sync')) {stored.push({sync_status:'error',sync_error:'Synchronization failed; retry or reconnect.'});return new Response(null,{status:204})}
    if(url.pathname.endsWith('/google_calendar_credentials'))return Response.json({refreshToken:'REFRESH_TOKEN',secretId:'generation'})
    if(url.pathname==='/token') {
     if(stage==='google_token_refresh')return Response.json({error:taint,error_description:taint},{status:403})

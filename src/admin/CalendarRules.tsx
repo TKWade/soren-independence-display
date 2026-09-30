@@ -1,10 +1,11 @@
+import {DeleteControl} from './DeleteControl'
 import { useState } from 'react'
 import type { HouseholdData } from '../data/records'
 import type { CalendarMatchingRule } from '../types/externalCalendar'
 import type { RunAction } from './Admin'
 import { CalendarVisualFields } from './CalendarVisualFields'
 import { mappingPayload } from '../calendar/relevance'
-import { saveMatchingRule, deleteMatchingRule } from '../data/calendarRepository'
+import { saveMatchingRule } from '../data/calendarRepository'
 export function CalendarRules({data,run}:{data:HouseholdData;run:RunAction}) {
  const [selected,setSelected]=useState(''),[version,setVersion]=useState(0)
  const rules=data.integration?.matchingRules??[]
@@ -22,7 +23,7 @@ function RuleForm({rule,data,run,done}:{rule?:CalendarMatchingRule;data:Househol
    calendar_id:String(v.get('calendar'))||null,source_filter:rule?.source_filter??null});done()})
  }}><div className="form-grid">
   <label>Rule name<input name="name" required maxLength={100} defaultValue={rule?.name}/></label>
-  <label>Profile<select name="profile" required defaultValue={rule?.profile_id??''}><option value="">Choose profile</option>{data.profiles.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+  <label>Profile<select name="profile" required defaultValue={rule?.profile_id??''}><option value="">Choose profile</option>{data.profiles.filter(p=>p.active||p.id===rule?.profile_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
   <label>Calendar<select name="calendar" defaultValue={rule?.calendar_id??''}><option value="">All selected calendars</option>{data.integration?.calendars.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
   <label>Title matching<select name="operator" defaultValue={rule?.title_operator??'contains'}><option value="contains">Contains</option><option value="equals">Equals</option></select></label>
   <label>Title text<input name="title" required maxLength={500} defaultValue={rule?.title_value}/></label>
@@ -32,6 +33,6 @@ function RuleForm({rule,data,run,done}:{rule?:CalendarMatchingRule;data:Househol
  <label className="check"><input type="checkbox" name="case" defaultChecked={rule?.case_sensitive??false}/>Case-sensitive title match</label>
  <label className="check"><input type="checkbox" name="enabled" defaultChecked={rule?.enabled??true}/>Rule enabled</label>
  <CalendarVisualFields data={data} initial={rule} ignore={action==='ignore'}/>
- <button>Save rule</button>{rule&&<><button type="button" className="secondary" onClick={done}>Cancel edit</button><button type="button" className="danger" onClick={()=>{if(confirm('Delete this matching rule? Events without another decision will return to the inbox.')) void run(async()=>{await deleteMatchingRule(rule.id,data.household.id);done()})}}>Delete rule</button></>}
+ <button>Save rule</button>{rule&&<><button type="button" className="secondary" onClick={done}>Cancel edit</button><DeleteControl entity="event_matching_rules" id={rule.id} householdId={data.household.id} run={run} done={done} label="Remove matching rule"/></>}
  </form>
 }

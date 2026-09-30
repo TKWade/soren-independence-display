@@ -39,7 +39,7 @@ export function normalizeWeek(snapshot: HouseholdData, profileId: string, now: D
     const label = visual.label_override || activity.label
     const personPicture = visual.picture_person_id ? personFor(visual.picture_person_id)?.picture : undefined
     const picture = personPicture ?? (activity.icon === 'home' ? pictureFor(place, data) : pictureFor(activity, data))
-    events.push({ id: event.id, title: event.title, label, startTime: event.start_time, endTime: event.end_time ?? undefined,
+    events.push({ allDay:snapshot.events.find(row=>row.id===event.seriesEventId)?.all_day??false,id: event.id, title: event.title, label, startTime: event.start_time, endTime: event.end_time ?? undefined,
      activity: { id: activity.id, label: activity.label, picture: pictureFor(activity, data) },
      place: { id: place.id, name: place.name, picture: pictureFor(place, data) },
      people: data.eventPeople.filter(item => item.visual_id === visual.id).map(item => personFor(item.person_id)).filter(item => item !== undefined),

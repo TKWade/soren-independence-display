@@ -116,6 +116,7 @@ export interface HomeSchedule {
 
 /** Read-only projection for the approved UI; not a persisted calendar record. */
 export interface DisplayEvent {
+  allDay?: boolean
   id: string
   title: string
   label: string

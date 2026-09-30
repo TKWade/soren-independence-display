@@ -94,3 +94,5 @@ connected calendar. Each profile sets normal bedtime independently and opts into
 Local, calendar with local fallback, or calendar-driven overnight assignments.
 Calendar Inbox mappings remain optional. See [Home & Sleep configuration](docs/calendar-home-sleep.md)
 for resolution, compatibility, caregiver review and deployment steps.
+
+See [automatic sync, Standard clock/times, and safe deletion](docs/automatic-sync-time-deletion.md) for the new migration/deployment checklist, Cron management, dependency audit and manual verification steps.

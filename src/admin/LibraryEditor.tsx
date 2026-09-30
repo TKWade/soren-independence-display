@@ -1,3 +1,4 @@
+import {DeleteControl} from './DeleteControl'
 import { useState } from 'react'
 import type { HouseholdData, LibraryName, LibraryRow } from '../data/records'
 import type { PictureKind } from '../types/calendar'
@@ -47,12 +48,12 @@ function LibraryForm({kind,data,item,run,done}:{kind:LibraryName;data:HouseholdD
   <div className="form-grid"><label>Name<input name="name" defaultValue={item?.name} maxLength={100} required/></label>
    <label>Short child label<input name="label" value={label} onChange={e=>setLabel(e.target.value)} maxLength={20} required/></label>
    {kind==='people'&&<label>Relationship / role<input name="relationship" defaultValue={item?.relationship}/></label>}
-   {kind==='places'&&<><label>Type<input name="place_type" defaultValue={item?.place_type??'home'} required/></label><label>Address (optional)<input name="address" defaultValue={item?.address}/></label><label>Recognizable person badge<select name="picture_person_id" defaultValue={item?.picture_person_id??''}><option value="">None</option>{data.people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></>}
+   {kind==='places'&&<><label>Type<input name="place_type" defaultValue={item?.place_type??'home'} required/></label><label>Address (optional)<input name="address" defaultValue={item?.address}/></label><label>Recognizable person badge<select name="picture_person_id" defaultValue={item?.picture_person_id??''}><option value="">None</option>{data.people.filter(p=>p.active||p.id===item?.picture_person_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></>}
    <label>Fallback icon<select name="icon" value={icon} onChange={e=>setIcon(e.target.value as PictureKind)}>{icons.map(value=><option key={value}>{value}</option>)}</select></label>
   </div>
   <ImageEditor preset={kind} originalUrl={originalPath?data.imageUrls[originalPath]:undefined} displayUrl={item?.image_path?data.imageUrls[item.image_path]:undefined} initial={item?.image_presentation} label={label.toUpperCase()} icon={icon} onChange={setImage}/>
   <label className="check"><input type="checkbox" name="active" defaultChecked={item?.active??true}/>Active (available for new schedules)</label>
   <button disabled={image?.pending||!!image?.error}>Save {kind==='people'?'person':kind==='places'?'place':'activity'}</button>
-  {item&&<button type="button" className="secondary" onClick={done}>Cancel edit</button>}
+  {item&&<><button type="button" className="secondary" onClick={done}>Cancel edit</button><button type="button" className="secondary" onClick={()=>void run(async()=>{await saveLibrary(kind,{id:item.id,household_id:data.household.id,active:!item.active});done()})}>{item.active?'Archive':'Restore'}</button><DeleteControl entity={kind} id={item.id} householdId={data.household.id} run={run} done={done}/></>}
  </form>
 }

@@ -1,8 +1,9 @@
+import {DeleteControl} from './DeleteControl'
 import { SleepReview } from './SleepReview'
 import { useState } from 'react'
 import type { HouseholdData } from '../data/records'
 import type { RunAction } from './Admin'
-import { removeRecord, saveRecord, saveHomePreferences } from '../data/repository'
+import { saveRecord, saveHomePreferences } from '../data/repository'
 import { homePreferences, eligibleSleepCalendar } from '../calendar/homePreferences'
 import type { OvernightMode } from '../calendar/homePreferences'
 const weekdays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
@@ -56,12 +57,12 @@ function RuleEditor({data,profileId,run,kind}:{data:HouseholdData;profileId:stri
   setSelected('');setVersion(v=>v+1)
  })}}><div className="form-grid">
  {kind==='weekly'?<label>Weekday<select name="weekday" defaultValue={rule?.weekday??1}>{weekdays.map((day,i)=><option key={day} value={i}>{day}</option>)}</select></label>:<label>Date<input type="date" name="date" required defaultValue={rule?.override_date??''}/></label>}
- <label>Sleep location<select name="place" required defaultValue={rule?.place_id??''}><option value="">Choose place</option>{data.places.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
- <label>Caregiver<select name="person" defaultValue={rule?.caregiver_id??''}><option value="">None</option>{data.people.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+ <label>Sleep location<select name="place" required defaultValue={rule?.place_id??''}><option value="">Choose place</option>{data.places.filter(p=>p.active||p.id===rule?.place_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+ <label>Caregiver<select name="person" defaultValue={rule?.caregiver_id??''}><option value="">None</option>{data.people.filter(p=>p.active||p.id===rule?.caregiver_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
  <label>Explicit bedtime override (optional)<input type="time" name="bedtime_override" defaultValue={(rule?.bedtime_override===undefined&&kind==='date'?rule?.bedtime:rule?.bedtime_override)?.slice(0,5)??''}/></label>
  </div><p>Leave bedtime override blank to use normal profile bedtime.</p>
  {rule?.bedtime&&kind==='weekly'&&<p>Legacy bedtime {rule.bedtime.slice(0,5)} is retained as a fallback until normal profile bedtime is configured.</p>}
  <button>Save {kind==='weekly'?'weekly rule':'date override'}</button>
- {rule&&<><button type="button" className="danger" onClick={()=>{if(window.confirm('Delete this sleep rule?')) void run(async()=>{await removeRecord('home_rules',rule.id,data.household.id);setSelected('')},'Rule deleted.')}}>Delete rule</button><button type="button" className="secondary" onClick={()=>setSelected('')}>Cancel edit</button></>}
+ {rule&&<><DeleteControl entity="home_rules" id={rule.id} householdId={data.household.id} run={run} label={kind==='date'?'Delete date override':'Delete weekly rule'} done={()=>setSelected('')}/><button type="button" className="secondary" onClick={()=>setSelected('')}>Cancel edit</button></>}
  </form></>
 }

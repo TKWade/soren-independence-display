@@ -1,3 +1,4 @@
+import {DeleteControl} from './DeleteControl'
 import { useState } from 'react'
 import type { HouseholdData, ProfileRow } from '../data/records'
 import type { DisplayMode, ProfileDisplayPreferences } from '../types/display'
@@ -18,6 +19,9 @@ function ProfileForm({data,profile,run,onSaved}:{data:HouseholdData;profile?:Pro
    <label>Display Mode<select value={preferences.displayMode} onChange={e=>setPreferences(defaultDisplayPreferences(e.target.value as DisplayMode))}><option value="week">Rolling week</option><option value="standard-calendar">Standard calendar</option><option value="first-next-then">First / Next / Then</option></select></label>
    <p>One schedule, shown in the way that works best for this person. Changing modes starts with that mode’s recommended settings.</p>
    {preferences.displayMode==='standard-calendar'&&<fieldset><legend>Calendar views for this profile</legend>
+    <label className="check"><input type="checkbox" checked={preferences.showActivityTimes} onChange={e=>update('showActivityTimes',e.target.checked)}/>Show activity start times</label>
+    <label className="check"><input type="checkbox" checked={preferences.showClock} onChange={e=>update('showClock',e.target.checked)}/>Show live household clock</label>
+    <label>Clock format<select value={preferences.clockFormat} onChange={e=>update('clockFormat',e.target.value as '12h'|'24h')}><option value="12h">12 hour</option><option value="24h">24 hour</option></select></label>
     <label>Allowed views<select value={preferences.allowedViews.join(',')} onChange={e=>{const views=e.target.value.split(',') as ('week'|'month')[];setPreferences(p=>({...p,allowedViews:views,defaultView:views.includes(p.defaultView)?p.defaultView:views[0]}))}}><option value="week">Week only</option><option value="month">Month only</option><option value="week,month">Week and Month</option></select></label>
     <label>Default view<select value={preferences.defaultView} onChange={e=>update('defaultView',e.target.value as 'week'|'month')}>{preferences.allowedViews.map(view=><option key={view} value={view}>{view==='week'?'Week':'Month'}</option>)}</select></label>
     <label className="check"><input type="checkbox" checked={preferences.allowCalendarNavigation} onChange={e=>update('allowCalendarNavigation',e.target.checked)}/>Allow Previous / Today / Next navigation</label>
@@ -28,7 +32,7 @@ function ProfileForm({data,profile,run,onSaved}:{data:HouseholdData;profile?:Pro
     <p>Turning automatic progress off holds the view until it is reopened or these preferences are changed.</p>
     <label>Motion<select value={preferences.motionPreference} onChange={e=>update('motionPreference',e.target.value as ProfileDisplayPreferences['motionPreference'])}><option value="normal">Normal</option><option value="reduced">Reduced</option><option value="none">None</option></select></label>
    </details>
-  </section><button>Save profile</button>
+  </section><button>Save profile</button>{profile&&<section aria-label="Profile danger zone"><h3>Profile Danger Zone</h3><p>Use the Active checkbox to archive this profile and preserve its history.</p><DeleteControl entity="profiles" id={profile.id} householdId={data.household.id} run={run} done={onSaved}/></section>}
  </form>
 }
 export function ProfileEditor({data,run}:{data:HouseholdData;run:RunAction}) {

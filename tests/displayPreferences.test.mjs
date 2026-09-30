@@ -51,8 +51,13 @@ test('both actual renderers consume engine-normalized schedules; restricted mode
   assert.equal([...week.matchAll(/data-date="([^"]+)"/g)][1][1],'2026-09-23')
   const standardProps={...props,preferences:defaultDisplayPreferences('standard-calendar')}
   const standard=renderToStaticMarkup(createElement(DisplayRenderer,standardProps))
+  assert.match(standard,/standard-clock/);assert.match(standard,/activity-time-row/)
+  const quiet=renderToStaticMarkup(createElement(DisplayRenderer,{...standardProps,preferences:{...standardProps.preferences,showClock:false,showActivityTimes:false}}))
+  assert.doesNotMatch(quiet,/standard-clock|activity-time-row/)
+  assert.doesNotMatch(week,/standard-clock|activity-time-row/)
   assert.equal((standard.match(/<nav/g)||[]).length,1);assert.match(standard,/Previous/);assert.match(standard,/>Next</);assert.match(standard,/>Today</);assert.match(standard,/>Month</)
   const month=renderToStaticMarkup(createElement(DisplayRenderer,{...standardProps,preferences:{...standardProps.preferences,allowedViews:['month'],defaultView:'month',allowCalendarNavigation:false}}))
+  assert.match(month,/standard-clock/);assert.match(month,/activity-time-row/)
   assert.equal((month.match(/data-date=/g)||[]).length,30);assert.match(month,/MY MONTH/)
   assert.doesNotMatch(month,/Previous|>Next<|>Week</)
   const {default:DayB}=await server.ssrLoadModule('/src/components/DayTimelineB.tsx')

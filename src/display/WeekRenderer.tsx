@@ -1,3 +1,5 @@
+import {StandardClock} from './StandardClock'
+import {ActivityTimes} from './ActivityTimes'
 import { calendarDates, calendarViewAllowed, isSubduedDay, navigateCalendar } from './calendarPresentation'
 import type { CalendarView } from '../types/display'
 import { PictureTile } from '../components/PictureTile'
@@ -38,6 +40,7 @@ export function WeekRenderer({schedule,profileName,preferences,now:today,savedVi
           <div className="brand-mark" aria-hidden="true">☀</div>
           <div><p className="eyebrow">{profileName.toUpperCase()}’S CALENDAR</p><h1>{selectedDay ? dayLabels(selectedDay.date).name : view==='month'?'MY MONTH':'MY WEEK'}</h1></div>
         </div>
+      {standard&&preferences.showClock&&<StandardClock zone={zone} format={preferences.clockFormat}/>}
       {selectedDay ? (
           <button ref={backButton} className="week-button" onClick={() => setSelectedDate(null)}>
             <span aria-hidden="true">←</span> {view.toUpperCase()}
@@ -54,11 +57,11 @@ export function WeekRenderer({schedule,profileName,preferences,now:today,savedVi
         view==='month'?<section className="month-grid" aria-label={periodLabel}>
           {['MON','TUE','WED','THU','FRI','SAT','SUN'].map(label=><span className="month-weekday" key={label}>{label}</span>)}
           {Array.from({length:(new Date(dates[0]+'T12:00:00Z').getUTCDay()+6)%7},(_,i)=><span aria-hidden="true" key={'blank'+i}/>)}
-          {days.map(day=>{const summary=summarizeDay(day);return <button key={day.date} data-date={day.date} className={`month-day ${day.date===todayDate?'is-today':''}`} aria-current={day.date===todayDate?'date':undefined} aria-label={dayLabels(day.date).displayDate+(day.date===todayDate?', Today':'')+'. Open day.'} disabled={!preferences.allowNavigation} onClick={()=>{lastDayDate.current=day.date;setSelectedDate(day.date)}}><span>{dayLabels(day.date).dayOfMonth}{day.date===todayDate?' · TODAY':''}</span>{summary&&<PictureTile item={summary.activity}/>}</button>})}
+          {days.map(day=>{const summary=summarizeDay(day);return <button key={day.date} data-date={day.date} className={`month-day ${day.date===todayDate?'is-today':''}`} aria-current={day.date===todayDate?'date':undefined} aria-label={dayLabels(day.date).displayDate+(day.date===todayDate?', Today':'')+'. Open day.'} disabled={!preferences.allowNavigation} onClick={()=>{lastDayDate.current=day.date;setSelectedDate(day.date)}}><span>{dayLabels(day.date).dayOfMonth}{day.date===todayDate?' · TODAY':''}</span>{summary&&<PictureTile item={summary.activity}/>} {preferences.showActivityTimes&&<ActivityTimes day={day} compact/>}</button>})}
         </section>:<section className="week-grid grid grid-cols-7" aria-label={standard?'Calendar week':'Yesterday, today and the next five days'}>
           {days.map((day) => (
             <DayCard key={day.date} day={day} isToday={day.date === dateKey(today, zone)}
-              subdued={isSubduedDay(day.date,todayDate,preferences)} allowNavigation={preferences.allowNavigation} showWho={preferences.showWho} showWhere={preferences.showWhere} onSelect={() => { lastDayDate.current = day.date; setSelectedDate(day.date) }} />
+              showActivityTimes={preferences.showActivityTimes} subdued={isSubduedDay(day.date,todayDate,preferences)} allowNavigation={preferences.allowNavigation} showWho={preferences.showWho} showWhere={preferences.showWhere} onSelect={() => { lastDayDate.current = day.date; setSelectedDate(day.date) }} />
           ))}
         </section>
       )}

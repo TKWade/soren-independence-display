@@ -1,3 +1,4 @@
+import {DeleteControl} from './DeleteControl'
 import { formatNight, overnightDates, resolveSleep, calendarOvernights } from '../calendar/homeSleep'
 import { homePreferences } from '../calendar/homePreferences'
 import { dateInZone } from '../lib/time'
@@ -44,6 +45,8 @@ export function InboxForm({data,item,run,done}:{data:HouseholdData;item:ReturnTy
   void run(async()=>{await saveExternalMapping({household_id:data.household.id,calendar_id:source.calendar_id,group_key:scope==='event'?eventKey(selectedSource):seriesKey(source),
    ...effect,target,create_rule:target!=='home_sleep'&&makeRule,rule_title:String(values.get('rule_title')||'').trim()});done()})
  }}>
+ <p>Delete this event in the connected calendar. Removing a mapping here never changes the provider event.</p>
+ {(data.integration?.mappings??[]).filter(m=>m.calendar_id===source.calendar_id&&(m.group_key===eventKey(selectedSource)||m.group_key===seriesKey(source))).map(m=><div key={m.id}><span>{data.profiles.find(p=>p.id===m.profile_id)?.name} · {m.group_key.startsWith('series:')?'Series decision':'Occurrence decision'}</span><DeleteControl entity="event_profile_mappings" id={m.id} householdId={data.household.id} run={run} done={done} label="Remove mapping"/></div>)}
  <h3>{event.title||'(Untitled event)'}</h3><p>{event.all_day?`${formatNight(event.all_day_start!)} — ${formatNight(event.all_day_end!)} (all day; end exclusive)`:new Date(event.start_time).toLocaleString('en-US',{timeZone:data.household.time_zone})} · {event.location||'No calendar location'}</p>
  <ul>{active.map(p=>{const d=relevanceFor(data,event,source,p.id);return <li key={p.id}>{p.name}: {d?`${isHomeSleep(d)?'Home & sleep':d.action==='ignore'?'Ignored':'Activity'} (${d.origin})`:'Needs review'}</li>})}</ul>
  <fieldset><legend>Apply this decision to profile(s)</legend>{active.map(p=><label className="check" key={p.id}><input name="profiles" type="checkbox" value={p.id} checked={profiles.includes(p.id)} onChange={e=>setProfiles(ids=>e.target.checked?[...ids,p.id]:ids.filter(id=>id!==p.id))}/>{p.name}</label>)}
