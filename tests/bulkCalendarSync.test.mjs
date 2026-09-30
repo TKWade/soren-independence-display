@@ -21,10 +21,10 @@ const state=async(db,batch)=>(await db.query('select public.read_calendar_sync_s
 test('commit benchmark: original versus bulk SQL, initial insert and replacement update (1/100/500/1000)',async t=>{
  const db=await database(false)
  try {
-  for(const name of migrations.slice(2,-1))await applyMigration(db,name)
+  for(const name of migrations.slice(2,migrations.indexOf('202609260003_bulk_calendar_sync.sql')))await applyMigration(db,name)
   const owner=await setup(db),timings=[]
   for(const version of ['original','bulk']) {
-   if(version==='bulk'){await db.exec('reset role;');await applyMigration(db,migrations.at(-1));await db.exec('set role service_role;')}
+   if(version==='bulk'){await db.exec('reset role;');await applyMigration(db,'202609260003_bulk_calendar_sync.sql');await db.exec('set role service_role;')}
    for(const count of [1,100,500,1000]) {
     const batch=await batchFor(db,owner,count)
     let start=performance.now();await commit(db,batch);const insertMs=performance.now()-start

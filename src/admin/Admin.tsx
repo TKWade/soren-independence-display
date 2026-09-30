@@ -12,7 +12,7 @@ import './admin.css'
 
 export type RunAction = (action: () => Promise<unknown>, success?: string) => Promise<boolean>
 export default function Admin({userId,authLoading,store}:{userId?:string;authLoading:boolean;store:ReturnType<typeof useHouseholdData>}) {
- const [tab,setTab]=useState<'profiles'|'people'|'places'|'activities'|'schedule'|'calendars'>(()=>new URLSearchParams(window.location.search).has('googleCalendar')?'calendars':'profiles')
+ const [tab,setTab]=useState<'profiles'|'people'|'places'|'activities'|'schedule'|'home'|'calendars'>(()=>new URLSearchParams(window.location.search).has('googleCalendar')?'calendars':'profiles')
  const [busy,setBusy]=useState(false)
  const [message,setMessage]=useState('')
  const [failed,setFailed]=useState(false)
@@ -49,12 +49,9 @@ export default function Admin({userId,authLoading,store}:{userId?:string;authLoa
    })
   }}><label>Household name<input name="name" maxLength={100} required/></label><label>Timezone (IANA)<input name="zone" defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} required/></label><button disabled={busy}>Create household</button></form></section>}
   {store.data && <div key={store.data.household.id}>
-   <nav aria-label="Caregiver sections">{(['profiles','people','places','activities','schedule','calendars'] as const).map(name=><button key={name} aria-current={name===tab?'page':undefined} onClick={()=>{setTab(name);setMessage('')}}>{name.toUpperCase()}</button>)}</nav>
+   <nav aria-label="Caregiver sections">{(['profiles','people','places','activities','schedule','home','calendars'] as const).map(name=><button key={name} aria-current={name===tab?'page':undefined} onClick={()=>{setTab(name);setMessage('')}}>{name==='home'?'HOME & SLEEP':name.toUpperCase()}</button>)}</nav>
    <fieldset className="admin-workspace" disabled={busy}>
-    {tab==='profiles' ? <ProfileEditor data={store.data} run={run}/> : tab==='calendars' ? <CalendarAdmin data={store.data} run={run}/> : tab==='schedule' ? <>
-     <ScheduleEditor data={store.data} run={run}/>
-     <HomeEditor data={store.data} run={run}/>
-    </> : <LibraryEditor key={tab} kind={tab} data={store.data} run={run}/>}
+    {tab==='profiles' ? <ProfileEditor data={store.data} run={run}/> : tab==='calendars' ? <CalendarAdmin data={store.data} run={run}/> : tab==='home' ? <HomeEditor data={store.data} run={run}/> : tab==='schedule' ? <ScheduleEditor data={store.data} run={run}/> : <LibraryEditor key={tab} kind={tab} data={store.data} run={run}/>}
    </fieldset>
    {store.data.profiles.length===0 && <section><h2>Getting started</h2><p>Create profiles under Profiles and add your libraries, or load fictional sample data into an empty household.</p>
     <button disabled={busy} onClick={()=>void run(()=>seedHousehold(store.selected,mondayFor(dateInZone(new Date(),store.data!.household.time_zone))),'Sample week saved.')}>Load sample week</button></section>}

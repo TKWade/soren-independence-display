@@ -19,7 +19,7 @@ test('Admin starts in Profiles with ordered neutral navigation; OAuth returns st
   const props={userId:'caregiver',authLoading:false,store:{data,list:[data.household],selected:'h',loading:false,error:null,refresh(){},setSelected(){}}}
   const markup=renderToStaticMarkup(createElement(Admin,props))
   const navigation=markup.match(/<nav aria-label="Caregiver sections">(.*?)<\/nav>/)[1]
-  assert.deepEqual([...navigation.matchAll(/>([A-Z]+)<\/button>/g)].map(m=>m[1]),['PROFILES','PEOPLE','PLACES','ACTIVITIES','SCHEDULE','CALENDARS'])
+  assert.deepEqual([...navigation.matchAll(/>([^<]+)<\/button>/g)].map(m=>m[1]),['PROFILES','PEOPLE','PLACES','ACTIVITIES','SCHEDULE','HOME &amp; SLEEP','CALENDARS'])
   assert.match(navigation,/aria-current="page">PROFILES/)
   assert.equal((markup.match(/<h2>Display profiles<\/h2>/g)||[]).length,1)
   assert.match(markup,/Display &amp; Interaction/)

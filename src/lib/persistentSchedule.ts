@@ -1,14 +1,11 @@
 import { prepareExternalDisplay } from '../calendar/relevance.ts'
-import type { HouseholdData, HomeRuleRow, LibraryRow } from '../data/records.ts'
+import type { HouseholdData, LibraryRow } from '../data/records.ts'
 import type { DaySchedule, DisplayEvent, PictureItem } from '../types/calendar.ts'
 import { addDays, atLocalTime, dateInZone, mondayFor } from './time.ts'
 import { resolveOccurrences } from './recurrence.ts'
 
-export function resolveHomeRule(rules: HomeRuleRow[], profileId: string, date: string) {
- const candidates = rules.filter(rule => rule.profile_id === profileId)
- return candidates.find(rule => rule.override_date === date)
-  ?? candidates.find(rule => rule.override_date === null && rule.weekday === new Date(date + 'T12:00').getDay())
-}
+export { resolveHomeRule } from '../calendar/homeSleep.ts'
+import { calendarOvernights, resolveSleep } from '../calendar/homeSleep.ts'
 export function pictureFor(row: LibraryRow, data: HouseholdData): PictureItem {
  const resident = data.people.find(person => person.id === row.picture_person_id)
  return { id: row.id, label: row.label, kind: row.icon,
@@ -16,6 +13,7 @@ export function pictureFor(row: LibraryRow, data: HouseholdData): PictureItem {
 }
 export function normalizeWeek(snapshot: HouseholdData, profileId: string, now: Date): DaySchedule[] {
  const data=prepareExternalDisplay(snapshot)
+ const nights=calendarOvernights(snapshot,profileId)
  if (!data.profiles.some(profile => profile.id === profileId && profile.active)) return []
  const zone = data.household.time_zone
  const monday = mondayFor(dateInZone(now, zone))
@@ -49,7 +47,7 @@ export function normalizeWeek(snapshot: HouseholdData, profileId: string, now: D
     if (visual.is_primary && !primaryEventId) primaryEventId = event.id
     }
   }
-  const home = resolveHomeRule(data.homeRules, profileId, date)
+  const home = resolveSleep(snapshot,profileId,date,nights).assignment
   const homePlace = data.places.find(item => item.id === home?.place_id)
   if (home && homePlace) {
    const caregiver = home.caregiver_id ? personFor(home.caregiver_id) : undefined

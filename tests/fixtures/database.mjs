@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 const userA='00000000-0000-4000-8000-000000000001'
 const userB='00000000-0000-4000-8000-000000000002'
-const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql','202609240002_profile_display_preferences.sql','202609260001_google_confidential_oauth.sql','202609260002_restore_google_pkce.sql','202609260003_bulk_calendar_sync.sql']
+const migrations=['202609210001_foundation.sql','202609210002_sample_data.sql','202609230001_recurrence_images.sql','202609230002_external_calendars.sql','202609240001_google_calendar.sql','202609240002_profile_display_preferences.sql','202609260001_google_confidential_oauth.sql','202609260002_restore_google_pkce.sql','202609260003_bulk_calendar_sync.sql','202609290001_profile_calendar_views.sql','202609290002_external_home_sleep.sql','202609290003_profile_home_preferences.sql']
 async function applyMigration(db,name,transform=sql=>sql) {
  let sql=await readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8')
  if(name==='202609240001_google_calendar.sql') {

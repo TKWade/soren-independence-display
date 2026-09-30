@@ -26,9 +26,15 @@ export interface MappingVisuals {
  label:string|null; visible:boolean; is_primary:boolean
 }
 /** A manual per-profile decision, scoped to one event or to a whole provider series. */
-export interface EventProfileMapping extends MappingVisuals {
- id:string; household_id:string; calendar_id:string; group_key:string; profile_id:string; action:'include'|'ignore'
+interface MappingIdentity {id:string;household_id:string;calendar_id:string;group_key:string;profile_id:string}
+export interface HomeSleepEffect {
+ sleep_place_id:string; sleep_caregiver_id:string|null;
+ bedtime_mode:'use_normal_bedtime'|'explicit'; bedtime_override:string|null
 }
+export type HomeSleepMapping = MappingIdentity & HomeSleepEffect & {target:'home_sleep';action:'include'}
+/** Missing target supports pre-migration Activity/Ignore snapshots. */
+export type ActivityMapping = MappingIdentity & MappingVisuals & {target?:'activity'|'ignore';action:'include'|'ignore'}
+export type EventProfileMapping = ActivityMapping | HomeSleepMapping
 /** Persisted form of the existing deterministic title-match rule contract. */
 export interface CalendarMatchingRule extends MappingVisuals {
  id:string; household_id:string; profile_id:string; name:string; enabled:boolean; priority:number;

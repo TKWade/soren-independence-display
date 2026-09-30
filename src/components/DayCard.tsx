@@ -5,16 +5,17 @@ import { TodayBadge } from './TodayBadge'
 interface DayCardProps {
   day: DaySchedule
   isToday: boolean
+  subdued?: boolean
   onSelect: () => void
   allowNavigation?:boolean
   showWho?:boolean
   showWhere?:boolean
 }
-export function DayCard({ day, isToday, onSelect, allowNavigation=true, showWho=true, showWhere=true }: DayCardProps) {
+export function DayCard({ day, isToday, onSelect, subdued=false, allowNavigation=true, showWho=true, showWhere=true }: DayCardProps) {
   const labels = dayLabels(day.date)
   const summary = summarizeDay(day)
   return (
-    <button className={`day-card ${isToday ? 'is-today' : ''}`} data-date={day.date}
+    <button className={`day-card ${isToday ? 'is-today' : ''} ${subdued?'is-subdued':''}`} data-date={day.date}
       aria-current={isToday ? 'date' : undefined}
       aria-label={`${isToday ? 'Today, ' : ''}${labels.name}, ${labels.displayDate}. ${summary?.activity.label ?? 'No plans'}.${allowNavigation?' Open day.':''}`}
       disabled={!allowNavigation} onClick={onSelect}>

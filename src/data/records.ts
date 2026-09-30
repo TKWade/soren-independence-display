@@ -1,3 +1,4 @@
+import type { ProfileHomePreferences } from '../calendar/homePreferences'
 import type { DisplayPreferencesRow } from '../types/display'
 import type { CalendarIntegrationData } from '../types/externalCalendar'
 import type { PictureKind } from '../types/calendar'
@@ -28,10 +29,10 @@ export interface VisualRow {
 export interface EventPersonRow { visual_id: string; person_id: string }
 export interface HomeRuleRow {
  id: string; household_id: string; profile_id: string; weekday: number | null; override_date: string | null;
- bedtime: string; place_id: string; caregiver_id: string | null
+ bedtime: string|null; bedtime_override?:string|null; place_id: string; caregiver_id: string | null
 }
 export interface HouseholdData {
  household: HouseholdRow; profiles: ProfileRow[]; people: LibraryRow[]; places: LibraryRow[]; activities: LibraryRow[];
  events: EventRow[]; sources: SourceRow[]; visuals: VisualRow[]; eventPeople: EventPersonRow[]; homeRules: HomeRuleRow[];
- displayPreferences?:DisplayPreferencesRow[]; integration?:CalendarIntegrationData; imageUrls: Record<string,string>
+ homePreferences?:ProfileHomePreferences[]; displayPreferences?:DisplayPreferencesRow[]; integration?:CalendarIntegrationData; imageUrls: Record<string,string>
 }

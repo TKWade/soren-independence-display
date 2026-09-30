@@ -61,3 +61,36 @@ The CALENDARS admin area now supports selected calendars, per-profile/series vis
 ## Per-profile display modes
 
 One normalized schedule now feeds the approved Week/Day-B renderer or the new First/Next/Then renderer. Profiles default to Week automatically. Caregiver **Profiles → Display profiles → Display & Interaction** stores mode, context, navigation, timing and motion preferences. See [display architecture, defaults, migration and validation](docs/display-modes.md). Apply `202609240002_profile_display_preferences.sql` before using this client. Each mode reuses the same local/Google schedule; no separate caregiver schedule is needed.
+
+## Profile calendar presentation
+
+Existing Week profiles now use a rolling seven-day view: yesterday (subdued),
+Today in column two, and the next five days. Tapping a day opens Day-B. Its
+WHO/WHERE context appears only inside activity tiles. There are no period
+navigation or view-switch controls in rolling mode.
+
+Choose **Standard calendar** in Profiles → Display & Interaction for a
+Monday–Sunday calendar week or full calendar month. Each profile independently
+sets allowed views (Week, Month, or both), default view, and whether Previous /
+Today / Next navigation is enabled. Month cells show a primary activity picture;
+opening a date shows its complete existing Day-B timeline.
+
+The version-1 preference JSON now includes `allowedViews`, `defaultView`,
+`weekPresentation`, `todayPosition` (2 for rolling), and
+`allowCalendarNavigation`. Legacy rows receive compatible defaults when read;
+First/Next/Then remains unchanged. Apply
+`supabase/migrations/202609290001_profile_calendar_views.sql` before saving
+standard-calendar profiles. This migration extends only the application-owned
+preference validator; it requires no Edge Function redeployment.
+
+Presentation assembles existing normalized weeks for the requested dates via
+`scheduleForDates`. The schedule model, recurrence engine, imported event
+normalization, mapping and relevance rules are unchanged. Dates use the household
+timezone, and standard-calendar navigation is independent of activity-detail
+navigation. No synchronization or notifications are added.
+
+The top-level Home & Sleep section supports complete local schedules without a
+connected calendar. Each profile sets normal bedtime independently and opts into
+Local, calendar with local fallback, or calendar-driven overnight assignments.
+Calendar Inbox mappings remain optional. See [Home & Sleep configuration](docs/calendar-home-sleep.md)
+for resolution, compatibility, caregiver review and deployment steps.

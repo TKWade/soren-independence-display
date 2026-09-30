@@ -2,7 +2,6 @@ import { defaultDisplayPreferences, visibleContext, formatDisplayTime } from '..
 import type { ProfileDisplayPreferences } from '../types/display'
 import { PhotoFrame } from './PhotoFrame'
 import './DayTimelineB.css'
-import { useState } from 'react'
 import type { DaySchedule } from '../types/calendar'
 import { dateKey, dayLabels, getTimelineState } from '../lib/schedule'
 import { PictureTile } from './PictureTile'
@@ -10,8 +9,6 @@ import { TodayBadge } from './TodayBadge'
 
 export default function DayTimelineB({ day, now, preferences=defaultDisplayPreferences() }: { day: DaySchedule; now: Date; preferences?:ProfileDisplayPreferences }) {
   const timeline = getTimelineState(day, now)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const selected = timeline.events.find(event => event.id === selectedId)
   const statusLabels = { now: '▶ NOW', next: '→ NEXT', past: '✓', future: '' }
   return (
     <section className="detail-panel day-variant-b" aria-label={dayLabels(day.date).name + ' timeline'}>
@@ -26,10 +23,9 @@ export default function DayTimelineB({ day, now, preferences=defaultDisplayPrefe
           const context = visibleContext(event,preferences)
           return (
             <li key={event.id} className={`timeline-step status-${status}`}>
-              <button className="event-card" aria-current={status === 'now' ? 'step' : undefined}
-                aria-expanded={selectedId === event.id} aria-controls="event-context"
-                aria-label={`${event.label}, ${status}. ${preferences.showWho?event.people.map(person => person.name).join(', '):''}, ${preferences.showWhere?event.place.name:''}. Show pictures.`}
-                disabled={!preferences.allowNavigation} onClick={() => setSelectedId(selectedId === event.id ? null : event.id)}>
+              <div className="event-card" role="group" aria-current={status === 'now' ? 'step' : undefined}
+                aria-label={`${event.label}, ${status}. ${preferences.showWho?event.people.map(person => person.name).join(', '):''}, ${preferences.showWhere?event.place.name:''}.`}
+                >
                 <span className="event-status">{statusLabels[status]}</span>
                 <PictureTile item={event.picture} />
                 {preferences.showTimes&&<time className="display-event-time" dateTime={event.startTime}>{formatDisplayTime(event,day.timeZone)}</time>}
@@ -39,18 +35,12 @@ export default function DayTimelineB({ day, now, preferences=defaultDisplayPrefe
                   </span></span>}
                   {context.place && <span className="inline-context-group"><span className="inline-context-heading">WHERE</span><span className="inline-context-item"><PhotoFrame url={context.place.picture.photoUrl} kind={context.place.picture.kind} badgeKind={context.place.picture.badgeKind}/><span className="inline-context-label">{context.place.picture.label}</span></span></span>}
                 </span>}
-              </button>
+              </div>
               {index < timeline.events.length - 1 && <span className="sequence-arrow" aria-hidden="true">→</span>}
             </li>
           )
         })}
       </ol>
-      <div id="event-context" className="event-context">
-        {selected && <>
-          {(preferences.showWho?selected.people:[]).map(person => <PictureTile key={person.id} item={person.picture} category="WITH" />)}
-          {preferences.showWhere&&<PictureTile item={(selected.sleepLocation ?? selected.place).picture} category={selected.sleepLocation ? 'SLEEP' : 'WHERE'} />}
-        </>}
-      </div>
     </section>
   )
 }

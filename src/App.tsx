@@ -1,3 +1,4 @@
+import { scheduleForDates } from './lib/scheduleForDates'
 import { normalizeWeek } from './lib/persistentSchedule'
 import type { useHouseholdData } from './hooks/useHouseholdData'
 import { useToday } from './hooks/useToday'
@@ -14,5 +15,5 @@ export default function App({store}:{store:ReturnType<typeof useHouseholdData>})
  } catch {invalidData=true}
  if(!store.data||invalidData) return <div className="display-state" role="status"><span aria-hidden="true">{store.loading?'◷':'☀'}</span>{store.loading?'WAIT':store.error||invalidData?'TRY AGAIN':'NO PLANS'}{(store.error||invalidData)&&<button aria-label="Try again" onClick={store.refresh}>↻</button>}</div>
  if(!profile) return <div className="display-state" role="status"><span aria-hidden="true">☀</span> NO PLANS</div>
- return <DisplayRenderer key={profileId+JSON.stringify(preferences)} schedule={{days,timeZone:store.data.household.time_zone}} profileName={profile.name} preferences={preferences} now={today} savedView={store.error}/>
+ return <DisplayRenderer key={profileId+JSON.stringify(preferences)} schedule={{days,timeZone:store.data.household.time_zone}} profileName={profile.name} preferences={preferences} now={today} savedView={store.error} loadDays={dates=>scheduleForDates(store.data!,profileId,dates)}/>
 }

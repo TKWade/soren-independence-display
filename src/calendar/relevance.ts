@@ -1,5 +1,5 @@
 import type { EventRow, HouseholdData, SourceRow } from '../data/records.ts'
-import type { CalendarMatchingRule, EventProfileMapping, MappingVisuals } from '../types/externalCalendar.ts'
+import type { CalendarMatchingRule, HomeSleepMapping, MappingVisuals } from '../types/externalCalendar.ts'
 import { atLocalTime } from '../lib/time.ts'
 export const eventKey=(source:SourceRow)=>'event:'+source.external_event_id
 export const seriesKey=(source:SourceRow)=>source.external_series_id?'series:'+source.external_series_id:eventKey(source)
@@ -13,8 +13,10 @@ export function ruleMatches(rule:CalendarMatchingRule,event:EventRow,source:Sour
  if(!rule.case_sensitive) {title=title.toLocaleLowerCase('en-US');value=value.toLocaleLowerCase('en-US')}
  return rule.title_operator==='equals'?title===value:rule.title_operator==='contains'&&title.includes(value)
 }
-export type Relevance = (MappingVisuals & {action:'include'|'ignore';origin:'manual'|'rule'}) | {action:'include';origin:'visual'}
-function complete(decision:MappingVisuals&{action:'include'|'ignore'},data:HouseholdData) {
+export function isHomeSleep(value:object):value is HomeSleepMapping {return 'target' in value&&value.target==='home_sleep'}
+export type Relevance = (HomeSleepMapping & {origin:'manual'}) | (MappingVisuals & {action:'include'|'ignore';origin:'manual'|'rule'}) | {action:'include';origin:'visual'}
+function complete(decision:(MappingVisuals&{action:'include'|'ignore'})|HomeSleepMapping,data:HouseholdData) {
+ if(isHomeSleep(decision)) return data.places.some(p=>p.id===decision.sleep_place_id)&&(!decision.sleep_caregiver_id||data.people.some(p=>p.id===decision.sleep_caregiver_id))
  return decision.action==='ignore'||(data.activities.some(a=>a.id===decision.activity_id)&&data.places.some(p=>p.id===decision.place_id)&&(!decision.caregiver_id||data.people.some(p=>p.id===decision.caregiver_id))&&(!decision.picture_person_id||data.people.some(p=>p.id===decision.picture_person_id)))
 }
 export function relevanceFor(data:HouseholdData,event:EventRow,source:SourceRow,profileId:string):Relevance|undefined {
@@ -51,7 +53,7 @@ export function prepareExternalDisplay(data:HouseholdData):HouseholdData {
   events.push(resolved)
   for(const profile of data.profiles.filter(p=>p.active)) {
    const decision=relevanceFor(data,event,source,profile.id)
-   if(!decision||decision.action==='ignore') continue
+   if(!decision||decision.action==='ignore'||isHomeSleep(decision)) continue
    if(decision.origin==='visual') {
     const visual=data.visuals.find(v=>v.event_id===event.id&&v.profile_id===profile.id)!
     visuals.push(visual);eventPeople.push(...data.eventPeople.filter(p=>p.visual_id===visual.id));continue
@@ -77,7 +79,7 @@ export function calendarInbox(data:HouseholdData,includeReviewed=false) {
  }
  return [...groups.values()]
 }
-export function mappingPayload(values:FormData,profileIds:string[]):Omit<EventProfileMapping,'id'|'household_id'|'calendar_id'|'group_key'|'profile_id'> & {profile_ids:string[]} {
+export function mappingPayload(values:FormData,profileIds:string[]):MappingVisuals & {action:'include'|'ignore';profile_ids:string[]} {
  const action=values.get('action')==='ignore'?'ignore':'include'
  return {action,profile_ids:profileIds,activity_id:action==='include'?String(values.get('activity_id')||'')||null:null,
   place_id:action==='include'?String(values.get('place_id')||'')||null:null,caregiver_id:String(values.get('caregiver_id')||'')||null,

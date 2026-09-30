@@ -3,16 +3,20 @@ import { dateKey, getTimelineState } from '../lib/schedule.ts'
 import { inlineDayContext } from '../lib/dayVariant.ts'
 import type { DisplayEvent } from '../types/calendar.ts'
 export function defaultDisplayPreferences(mode:DisplayMode='week'):ProfileDisplayPreferences {
- return {version:1,displayMode:mode,maxVisibleItems:mode==='week'?7:3,allowNavigation:mode==='week',autoAdvance:true,showWho:mode==='week',showWhere:mode==='week',showTimes:false,motionPreference:'normal',audioEnabled:false}
+ return {allowedViews:mode==='standard-calendar'?['week','month']:['week'],defaultView:'week',weekPresentation:mode==='standard-calendar'?'calendar':'rolling',todayPosition:2,allowCalendarNavigation:mode==='standard-calendar',version:1,displayMode:mode,maxVisibleItems:mode!=='first-next-then'?7:3,allowNavigation:mode!=='first-next-then',autoAdvance:true,showWho:mode!=='first-next-then',showWhere:mode!=='first-next-then',showTimes:false,motionPreference:'normal',audioEnabled:false}
 }
 /** Missing rows mean the approved Week defaults. Invalid persisted settings fail explicitly. */
 export function parseDisplayPreferences(value:unknown):ProfileDisplayPreferences {
  if(value===undefined||value===null) return defaultDisplayPreferences()
  if(typeof value!=='object'||Array.isArray(value)) throw new Error('Invalid display preferences')
  const p=value as Record<string,unknown>
- if(p.version!==1||!['week','first-next-then'].includes(String(p.displayMode))||!Number.isInteger(p.maxVisibleItems)||Number(p.maxVisibleItems)<1||Number(p.maxVisibleItems)>7||!['normal','reduced','none'].includes(String(p.motionPreference))) throw new Error('Invalid display preferences')
+ if(p.version!==1||!['week','standard-calendar','first-next-then'].includes(String(p.displayMode))||!Number.isInteger(p.maxVisibleItems)||Number(p.maxVisibleItems)<1||Number(p.maxVisibleItems)>7||!['normal','reduced','none'].includes(String(p.motionPreference))) throw new Error('Invalid display preferences')
  for(const key of ['allowNavigation','autoAdvance','showWho','showWhere','showTimes','audioEnabled']) if(typeof p[key]!=='boolean') throw new Error('Invalid display preference: '+key)
- return {...defaultDisplayPreferences(p.displayMode as DisplayMode),...p} as ProfileDisplayPreferences
+ const resolved={...defaultDisplayPreferences(p.displayMode as DisplayMode),...p} as ProfileDisplayPreferences
+ if(!Array.isArray(resolved.allowedViews)||!resolved.allowedViews.length||new Set(resolved.allowedViews).size!==resolved.allowedViews.length||resolved.allowedViews.some(view=>!['week','month'].includes(view))||!resolved.allowedViews.includes(resolved.defaultView)||!['rolling','calendar'].includes(resolved.weekPresentation)||!Number.isInteger(resolved.todayPosition)||resolved.todayPosition<1||resolved.todayPosition>7||typeof resolved.allowCalendarNavigation!=='boolean') throw new Error('Invalid calendar preferences')
+ if(resolved.displayMode!=='standard-calendar'&&(resolved.allowedViews.length!==1||resolved.defaultView!=='week'||resolved.weekPresentation!=='rolling'||resolved.allowCalendarNavigation||resolved.todayPosition!==2)) throw new Error('Invalid low-navigation preferences')
+ if(resolved.displayMode==='standard-calendar'&&resolved.weekPresentation!=='calendar') throw new Error('Invalid standard calendar presentation')
+ return resolved
 }
 export function selectRenderer(preferences:ProfileDisplayPreferences):DisplayMode {return preferences.displayMode}
 export function selectSequence(schedule:NormalizedSchedule,now:Date,maxVisibleItems=3):SequenceItem[] {
