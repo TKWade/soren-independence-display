@@ -14,8 +14,8 @@ function ProfileForm({data,profile,run,onSaved}:{data:HouseholdData;profile?:Pro
   await saveDisplayProfile({id:profile?.id??crypto.randomUUID(),household_id:data.household.id,name:String(values.get('name')).trim(),active:values.get('active')==='on',preferences:parseDisplayPreferences(preferences)})
   onSaved()
  })}}>
-  <label>Name<input name="name" defaultValue={profile?.name} maxLength={100} required/></label><label className="check"><input type="checkbox" name="active" defaultChecked={profile?.active??true}/>Active</label>
-  <section aria-label="Display and interaction"><h3>Display &amp; Interaction</h3>
+  <h3>Profile identity</h3><label>Name<input name="name" defaultValue={profile?.name} maxLength={100} required/></label><label className="check"><input type="checkbox" name="active" defaultChecked={profile?.active??true}/>Active</label>
+  <section className="admin-subsection" aria-label="Display and interaction"><h3>Display &amp; Interaction</h3>
    <label>Display Mode<select value={preferences.displayMode} onChange={e=>setPreferences(defaultDisplayPreferences(e.target.value as DisplayMode))}><option value="week">Rolling week</option><option value="standard-calendar">Standard calendar</option><option value="first-next-then">First / Next / Then</option></select></label>
    <p>One schedule, shown in the way that works best for this person. Changing modes starts with that mode’s recommended settings.</p>
    {preferences.displayMode==='standard-calendar'&&<fieldset><legend>Calendar views for this profile</legend>
@@ -32,7 +32,7 @@ function ProfileForm({data,profile,run,onSaved}:{data:HouseholdData;profile?:Pro
     <p>Turning automatic progress off holds the view until it is reopened or these preferences are changed.</p>
     <label>Motion<select value={preferences.motionPreference} onChange={e=>update('motionPreference',e.target.value as ProfileDisplayPreferences['motionPreference'])}><option value="normal">Normal</option><option value="reduced">Reduced</option><option value="none">None</option></select></label>
    </details>
-  </section><button>Save profile</button>{profile&&<section aria-label="Profile danger zone"><h3>Profile Danger Zone</h3><p>Use the Active checkbox to archive this profile and preserve its history.</p><DeleteControl entity="profiles" id={profile.id} householdId={data.household.id} run={run} done={onSaved}/></section>}
+  </section><button>Save profile</button>{profile&&<section className="danger-zone" aria-label="Profile danger zone"><h3>Profile Danger Zone</h3><p>Use the Active checkbox to archive this profile and preserve its history.</p><DeleteControl entity="profiles" id={profile.id} householdId={data.household.id} run={run} done={onSaved}/></section>}
  </form>
 }
 export function ProfileEditor({data,run}:{data:HouseholdData;run:RunAction}) {

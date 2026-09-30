@@ -53,7 +53,7 @@ export function ScheduleEditor({data,run}:{data:HouseholdData;run:RunAction}) {
    })
   }}>
    <fieldset disabled={isLinked}>
-    <div className="form-grid"><label>Title<input name="title" required maxLength={160} defaultValue={event?.title}/></label>
+    <h3>Basic event</h3><div className="form-grid"><label>Title<input name="title" required maxLength={160} defaultValue={event?.title}/></label>
      <label>Starts (series anchor)<input type="date" name="date" required value={startDate||start.slice(0,10)} onChange={e=>setStartDate(e.target.value)}/></label>
      <label>Start<input type="time" name="start" required defaultValue={start.slice(11,16)}/></label>
      <label>End (optional)<input type="time" name="end" defaultValue={end.slice(11,16)}/></label>
@@ -67,10 +67,10 @@ export function ScheduleEditor({data,run}:{data:HouseholdData;run:RunAction}) {
     {error && <p role="alert">{error}</p>}
     <fieldset><legend>Profiles (at least one)</legend>{data.profiles.filter(p=>p.active||visuals.some(v=>v.profile_id===p.id)).map(p=><label className="check" key={p.id}><input name="profiles" type="checkbox" value={p.id} defaultChecked={event ? visuals.some(v=>v.profile_id===p.id) : data.profiles.length===1}/>{p.name}</label>)}</fieldset>
     <fieldset><legend>People involved</legend>{data.people.filter(p=>p.active||personIds.includes(p.id)).map(p=><label className="check" key={p.id}><input name="people" type="checkbox" value={p.id} defaultChecked={personIds.includes(p.id)}/>{p.name}</label>)}</fieldset>
-    <label className="check"><input name="visible" type="checkbox" defaultChecked={visual?.visible ?? true}/>Show on child display</label>
+    <h3>Display behavior</h3><label className="check"><input name="visible" type="checkbox" defaultChecked={visual?.visible ?? true}/>Show on child display</label>
     <label className="check"><input name="primary" type="checkbox" defaultChecked={visual?.is_primary ?? false}/>Main activity for the Week summary</label>
     <button>Save event</button>
-    {event&&!isLinked&&<DeleteControl entity="calendar_events" id={event.id} householdId={data.household.id} run={run} label={event.local_recurrence?'Delete entire series':'Delete event'} done={()=>{setSelected('');setStartDate('');setError('')}}/>}
+    {event&&!isLinked&&<div className="danger-zone"><h3>Delete event or series</h3><DeleteControl entity="calendar_events" id={event.id} householdId={data.household.id} run={run} label={event.local_recurrence?'Delete entire series':'Delete event'} done={()=>{setSelected('');setStartDate('');setError('')}}/></div>}
    </fieldset>
    {event && <button type="button" className="secondary" onClick={()=>{setSelected('');setStartDate('');setError('')}}>Cancel edit</button>}
   </form>

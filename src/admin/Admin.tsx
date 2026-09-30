@@ -1,3 +1,4 @@
+import { CaregiverHeader } from './CaregiverHeader'
 import { CalendarAdmin } from './CalendarAdmin'
 import { useState } from 'react'
 import { client, supabase } from '../data/supabase'
@@ -34,14 +35,14 @@ export default function Admin({userId,authLoading,store}:{userId?:string;authLoa
    <button disabled={busy}>Sign in</button>
   </form><p role="status">{failed ? 'Sign-in failed. Check your credentials and connection.' : message}</p></main>
  return <main className="admin-shell">
-  <header className="admin-header"><h1>Caregiver</h1><button disabled={busy} onClick={()=>void run(async()=>{
+  <CaregiverHeader><button className="quiet" disabled={busy} onClick={()=>void run(async()=>{
    // A local sign-out clears the display and cached auth even if the server is offline.
    const {error}=await client().auth.signOut({scope:'local'});if(error) throw error
-  },'Signed out.')}>Sign out</button></header>
+  },'Signed out.')}>Sign out</button></CaregiverHeader>
   {store.list.length>0 && <div className="admin-toolbar"><label>Household<select value={store.selected} onChange={event=>store.setSelected(event.target.value)}>{store.list.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select></label>
-   <a href={'/?household='+store.selected}>Open display</a><button onClick={store.refresh} disabled={store.loading}>Refresh</button></div>}
+   <a className="secondary" href={'/?household='+store.selected}>Open display</a><button className="secondary" onClick={store.refresh} disabled={store.loading}>Refresh</button></div>}
   {(store.error || failed) && <p role="alert" className="admin-error">{failed ? message : 'Unable to refresh data. Previously loaded records may be out of date.'}</p>}
-  {!failed && message && <p role="status">{message}</p>}
+  {!failed && message && <p className="admin-status success" role="status">{message}</p>}
   {store.loading && <p role="status">Loading…</p>}
   {!store.loading && !store.error && !store.list.length && <section><h2>Create your household</h2><form onSubmit={event=>{
    event.preventDefault();const values=new FormData(event.currentTarget);void run(async()=>{

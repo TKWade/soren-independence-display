@@ -29,7 +29,7 @@ function ProfileHome({data,profileId,run}:{data:HouseholdData;profileId:string;r
   <h3>Normal bedtime</h3><p>Independent of sleep location. Set a default and optionally different times for individual weekdays.</p>
   <label>Default bedtime<input type="time" name="default_bedtime" defaultValue={preferences.default_bedtime?.slice(0,5)??''}/></label>
   <details><summary>Weekday bedtime overrides (optional)</summary>{weekdays.map((day,i)=><label key={day}>{day}<input type="time" name={'weekday-'+i} defaultValue={preferences.weekday_bedtimes[i]?.slice(0,5)??''}/></label>)}</details>
-  <label>Overnight schedule source<select value={mode} onChange={e=>setMode(e.target.value as OvernightMode)}><option value="local">Local schedule</option><option value="calendar_with_local_fallback">Connected calendar + local fallback</option><option value="calendar_driven">Connected calendar-driven</option></select></label>
+  <h3>Overnight schedule source</h3><label>Overnight schedule source<select value={mode} onChange={e=>setMode(e.target.value as OvernightMode)}><option value="local">Local schedule</option><option value="calendar_with_local_fallback">Connected calendar + local fallback</option><option value="calendar_driven">Connected calendar-driven</option></select></label>
   <p>Changing source never deletes local rules or calendar mappings. Specific-date overrides always take priority.</p>
   <button>Save Home &amp; Sleep settings</button>
  </form>
