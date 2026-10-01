@@ -1,3 +1,4 @@
+import { CaregiverToolbar } from './CaregiverToolbar'
 import { CaregiverHeader } from './CaregiverHeader'
 import { CalendarAdmin } from './CalendarAdmin'
 import { useState } from 'react'
@@ -39,8 +40,7 @@ export default function Admin({userId,authLoading,store}:{userId?:string;authLoa
    // A local sign-out clears the display and cached auth even if the server is offline.
    const {error}=await client().auth.signOut({scope:'local'});if(error) throw error
   },'Signed out.')}>Sign out</button></CaregiverHeader>
-  {store.list.length>0 && <div className="admin-toolbar"><label>Household<select value={store.selected} onChange={event=>store.setSelected(event.target.value)}>{store.list.map(h=><option value={h.id} key={h.id}>{h.name}</option>)}</select></label>
-   <a className="secondary" href={'/?household='+store.selected}>Open display</a><button className="secondary" onClick={store.refresh} disabled={store.loading}>Refresh</button></div>}
+  {store.list.length>0 && <CaregiverToolbar households={store.list} householdId={store.selected} profiles={store.data?.household.id===store.selected?store.data.profiles:[]} onHouseholdChange={store.setSelected} onRefresh={store.refresh} loading={store.loading}/>}
   {(store.error || failed) && <p role="alert" className="admin-error">{failed ? message : 'Unable to refresh data. Previously loaded records may be out of date.'}</p>}
   {!failed && message && <p className="admin-status success" role="status">{message}</p>}
   {store.loading && <p role="status">Loading…</p>}

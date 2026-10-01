@@ -13,9 +13,22 @@ test('Admin presentation keeps calendar status and deletion safeguards explicit'
  try {
   const {DeletionDialog}=await server.ssrLoadModule('/src/admin/DeleteControl.tsx')
   const {CalendarAdmin}=await server.ssrLoadModule('/src/admin/CalendarAdmin.tsx')
+  const {CaregiverToolbar}=await server.ssrLoadModule('/src/admin/CaregiverToolbar.tsx')
+  const {ProfileEditor}=await server.ssrLoadModule('/src/admin/ProfileEditor.tsx')
   const {DisplayBrand}=await server.ssrLoadModule('/src/display/DisplayHeader.tsx')
   const {CaregiverHeader}=await server.ssrLoadModule('/src/admin/CaregiverHeader.tsx')
   const render=(Component,props)=>renderToStaticMarkup(createElement(Component,props))
+  const toolbar={households:[{id:'h',name:'Household'}],householdId:'h',profiles:[{id:'inactive',name:'Hidden',active:false},{id:'soren',name:'Soren',active:true},{id:'siv',name:'Siv',active:true}],loading:false,onHouseholdChange(){},onRefresh(){}}
+  let toolbarHtml=render(CaregiverToolbar,toolbar)
+  assert.match(toolbarHtml,/href="\/\?household=h&amp;profile=soren"/)
+  assert.doesNotMatch(toolbarHtml,/Hidden/)
+  toolbarHtml=render(CaregiverToolbar,{...toolbar,profiles:[]})
+  assert.match(toolbarHtml,/disabled=""[^>]*>Open/)
+  assert.match(toolbarHtml,/Create or activate a profile/)
+  assert.match(toolbarHtml,/Refresh<\/button><p[^>]*class="toolbar-help"/)
+  assert.doesNotMatch(toolbarHtml,/href=/)
+  assert.match(render(CaregiverToolbar,{...toolbar,householdId:'other',profiles:[{id:'only',name:'Only',active:true}]}),/household=other&amp;profile=only/)
+  assert.doesNotMatch(render(ProfileEditor,{data:householdFixture(),run:async()=>false}),/Open .*display|href=/)
   const dialog={entity:'profiles',id:'profile',label:'Permanent delete',preview:{name:'Example',dependencies:{shared_events:4},blocked:false},typed:'',setTyped(){},close(){},confirm(){}}
   for(const [blocked,typed,disabled] of [[true,'Example',true],[false,'',true],[false,'wrong',true],[false,'Example',false]]) {
    const html=render(DeletionDialog,{...dialog,preview:{...dialog.preview,blocked},typed})

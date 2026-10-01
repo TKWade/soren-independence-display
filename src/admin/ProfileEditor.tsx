@@ -40,6 +40,6 @@ export function ProfileEditor({data,run}:{data:HouseholdData;run:RunAction}) {
  const profile=data.profiles.find(p=>p.id===selected)
  return <section><h2>Display profiles</h2><label>Edit profile<select value={selected} onChange={e=>setSelected(e.target.value)}><option value="">New profile</option>{data.profiles.map(p=><option key={p.id} value={p.id}>{p.name}{p.active?'':' (inactive)'}</option>)}</select></label>
   <ProfileForm key={selected+version} data={data} profile={profile} run={run} onSaved={()=>{setSelected('');setVersion(v=>v+1)}}/>
-  <ul>{data.profiles.filter(p=>p.active).map(p=><li key={p.id}><a href={'/?household='+data.household.id+'&profile='+p.id}>Open {p.name}’s display</a></li>)}</ul>
+
  </section>
 }

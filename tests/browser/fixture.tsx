@@ -22,7 +22,8 @@ context.fillStyle='#273e59';context.fillRect(100,1150,400,4500)
 context.fillStyle='white';context.font='60px sans-serif';context.fillText('TALL TEST',100,5800)
 const portrait=canvas.toDataURL('image/png')
 // 15:45 on Wednesday makes NOW and NEXT deterministic.
-const now=new Date(2026,8,23,15,45)
+const fixtureDate=new URLSearchParams(location.search).get('monthDate')
+const now=fixtureDate?new Date(fixtureDate+'T12:00:00'):new Date(2026,8,23,15,45)
 const week=createMockWeek(now)
 for(const day of week) for(const event of day.events) {
  for(const person of event.people) if(person.id==='dad') person.picture={...person.picture,photoUrl:portrait}
@@ -54,7 +55,7 @@ export function Fixture() {
   day={...day,events:['SCHOOL','PT','AFTER SCHOOL ACTIVITY','SLEEP'].slice(0,count||4).map((label,index)=>{
    const kind=index===3?'sleep' as const:'school' as const
    const picture={id:'multi-'+index,kind,label,...(index===2?{photoUrl:portrait}:{})}
-   return {...base,id:'multi-'+index,label,picture,activity:{id:picture.id,picture},place,people:[mom],sleepLocation:index===3?place:undefined,startTime:new Date(now.getTime()+(index-1)*3600000).toISOString(),endTime:new Date(now.getTime()+index*3600000+1800000).toISOString()}
+   return {...base,id:'multi-'+index,label,picture,activity:{id:picture.id,picture},place:new URLSearchParams(location.search).has('richContext')?{...place,picture:{...place.picture,label:'NORTHSIDE FAMILY HOUSE',photoUrl:portrait}}:place,people:new URLSearchParams(location.search).has('richContext')?[mom,{id:'dad',name:'Dad',picture:{id:'dad',kind:'dad' as const,label:'DAD',photoUrl:portrait}}]:[mom],sleepLocation:index===3?place:undefined,startTime:new Date(now.getTime()+(index-1)*3600000).toISOString(),endTime:new Date(now.getTime()+index*3600000+1800000).toISOString()}
   })}
  }
  const view=new URLSearchParams(location.search).get('view')

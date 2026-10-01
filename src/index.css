@@ -117,3 +117,7 @@ h1 { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1; font-weight: 
 .image-week-preview .picture-frame { height: 90px; }
 .image-week-preview .picture-label { font-size: 20px; }
 .repeat-summary { padding: 12px; background: #edf6fc; border-radius: 8px; }
+
+/* Keep long caregiver forms and Month in the document scroll chain. */
+html:has(.admin-shell, .month-grid) { height: auto; max-height: none; overflow-y: auto; }
+body:has(.admin-shell, .month-grid), #root:has(.admin-shell, .month-grid) { height: auto; max-height: none; overflow: visible; }

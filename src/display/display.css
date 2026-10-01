@@ -104,3 +104,7 @@
 /* Equalize rolling Week siblings to their natural grid row, never the viewport. */
 [data-display-mode="week"] .week-grid { align-items: stretch; align-content: start; grid-auto-rows: auto; }
 [data-display-mode="week"] .week-grid .day-card { align-self: stretch; }
+
+/* Month is a document, not a viewport-height panel. Six rows may scroll. */
+.calendar-shell:has(> .month-grid) { display: block; height: auto; max-height: none; overflow: visible; padding-bottom: max(var(--space-6), env(safe-area-inset-bottom, 0px)); }
+.month-grid { height: auto; max-height: none; overflow: visible; align-content: start; }

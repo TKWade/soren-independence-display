@@ -23,7 +23,7 @@ test('Admin starts in Profiles with ordered neutral navigation; OAuth returns st
   assert.match(navigation,/aria-current="page">PROFILES/)
   assert.equal((markup.match(/<h2>Display profiles<\/h2>/g)||[]).length,1)
   assert.match(markup,/Display &amp; Interaction/)
-  assert.match(markup,/Open display/)
+  assert.match(markup,/aria-label="Open Soren’s display"/)
   assert.doesNotMatch(markup,/Open child display|<h2>Home|<h2>Schedule|<h2>Calendar connections/)
   globalThis.window.location.search='?googleCalendar=connected'
   const callback=renderToStaticMarkup(createElement(Admin,props))
