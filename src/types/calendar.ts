@@ -25,6 +25,7 @@ export interface Activity {
 export interface Profile {
   id: string
   name: string
+  role?:import('../profiles/access.ts').ProfileRole
 }
 
 export type CalendarProvider = 'google' | 'microsoft'

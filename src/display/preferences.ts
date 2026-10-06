@@ -3,7 +3,7 @@ import { dateKey, getTimelineState } from '../lib/schedule.ts'
 import { inlineDayContext } from '../lib/dayVariant.ts'
 import type { DisplayEvent } from '../types/calendar.ts'
 export function defaultDisplayPreferences(mode:DisplayMode='week'):ProfileDisplayPreferences {
- return {showActivityTimes:mode==='standard-calendar',showClock:mode==='standard-calendar',clockFormat:'12h',allowedViews:mode==='standard-calendar'?['week','month']:['week'],defaultView:'week',weekPresentation:mode==='standard-calendar'?'calendar':'rolling',todayPosition:2,allowCalendarNavigation:mode==='standard-calendar',version:1,displayMode:mode,maxVisibleItems:mode!=='first-next-then'?7:3,allowNavigation:mode!=='first-next-then',autoAdvance:true,showWho:mode!=='first-next-then',showWhere:mode!=='first-next-then',showTimes:false,motionPreference:'normal',audioEnabled:false}
+ return {showProfileSwitching:true,showWeather:mode!=='first-next-then',weatherDetail:mode==='standard-calendar'?'standard':'simple',showActivityTimes:mode==='standard-calendar',showClock:mode==='standard-calendar',clockFormat:'12h',allowedViews:mode==='standard-calendar'?['week','month']:['week'],defaultView:'week',weekPresentation:mode==='standard-calendar'?'calendar':'rolling',todayPosition:2,allowCalendarNavigation:mode==='standard-calendar',version:1,displayMode:mode,maxVisibleItems:mode!=='first-next-then'?7:3,allowNavigation:mode!=='first-next-then',autoAdvance:true,showWho:mode!=='first-next-then',showWhere:mode!=='first-next-then',showTimes:false,motionPreference:'normal',audioEnabled:false}
 }
 /** Missing rows mean the approved Week defaults. Invalid persisted settings fail explicitly. */
 export function parseDisplayPreferences(value:unknown):ProfileDisplayPreferences {
@@ -12,11 +12,13 @@ export function parseDisplayPreferences(value:unknown):ProfileDisplayPreferences
  const p=value as Record<string,unknown>
  if(p.version!==1||!['week','standard-calendar','first-next-then'].includes(String(p.displayMode))||!Number.isInteger(p.maxVisibleItems)||Number(p.maxVisibleItems)<1||Number(p.maxVisibleItems)>7||!['normal','reduced','none'].includes(String(p.motionPreference))) throw new Error('Invalid display preferences')
  for(const key of ['allowNavigation','autoAdvance','showWho','showWhere','showTimes','audioEnabled']) if(typeof p[key]!=='boolean') throw new Error('Invalid display preference: '+key)
- const resolved={...defaultDisplayPreferences(p.displayMode as DisplayMode),...p} as ProfileDisplayPreferences
+ const resolved={showProfileSwitching:true,...defaultDisplayPreferences(p.displayMode as DisplayMode),...p} as ProfileDisplayPreferences
+ if(typeof resolved.showProfileSwitching!=='boolean')throw new Error('Invalid profile switching preference')
  if(!Array.isArray(resolved.allowedViews)||!resolved.allowedViews.length||new Set(resolved.allowedViews).size!==resolved.allowedViews.length||resolved.allowedViews.some(view=>!['week','month'].includes(view))||!resolved.allowedViews.includes(resolved.defaultView)||!['rolling','calendar'].includes(resolved.weekPresentation)||!Number.isInteger(resolved.todayPosition)||resolved.todayPosition<1||resolved.todayPosition>7||typeof resolved.allowCalendarNavigation!=='boolean') throw new Error('Invalid calendar preferences')
  if(resolved.displayMode!=='standard-calendar'&&(resolved.allowedViews.length!==1||resolved.defaultView!=='week'||resolved.weekPresentation!=='rolling'||resolved.allowCalendarNavigation||resolved.todayPosition!==2)) throw new Error('Invalid low-navigation preferences')
  if(resolved.displayMode==='standard-calendar'&&resolved.weekPresentation!=='calendar') throw new Error('Invalid standard calendar presentation')
  if(typeof resolved.showActivityTimes!=='boolean'||typeof resolved.showClock!=='boolean'||!['12h','24h'].includes(resolved.clockFormat)) throw new Error('Invalid clock preferences')
+ if(typeof resolved.showWeather!=='boolean'||!['simple','standard'].includes(resolved.weatherDetail)) throw new Error('Invalid weather preferences')
  return resolved
 }
 export function selectRenderer(preferences:ProfileDisplayPreferences):DisplayMode {return preferences.displayMode}

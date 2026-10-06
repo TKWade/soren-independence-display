@@ -5,7 +5,7 @@ import type { PictureKind } from '../types/calendar'
 import type { LocalRecurrence } from '../lib/recurrence'
 import type { ImagePresentation } from '../lib/images'
 export interface HouseholdRow { id: string; name: string; time_zone: string }
-export interface ProfileRow { id: string; household_id: string; name: string; active: boolean }
+export interface ProfileRow { id: string; household_id: string; name: string; active: boolean; role?:import('../profiles/access.ts').ProfileRole; image_path?:string|null; avatar?:string|null }
 export interface LibraryRow {
  id: string; household_id: string; name: string; label: string; icon: PictureKind; image_path: string | null; active: boolean;
  relationship?: string; address?: string; place_type?: string; picture_person_id?: string | null
@@ -32,7 +32,7 @@ export interface HomeRuleRow {
  bedtime: string|null; bedtime_override?:string|null; place_id: string; caregiver_id: string | null
 }
 export interface HouseholdData {
- household: HouseholdRow; profiles: ProfileRow[]; people: LibraryRow[]; places: LibraryRow[]; activities: LibraryRow[];
+ weather?:import('../weather/types').HouseholdWeather; household: HouseholdRow; profiles: ProfileRow[]; people: LibraryRow[]; places: LibraryRow[]; activities: LibraryRow[];
  events: EventRow[]; sources: SourceRow[]; visuals: VisualRow[]; eventPeople: EventPersonRow[]; homeRules: HomeRuleRow[];
  homePreferences?:ProfileHomePreferences[]; displayPreferences?:DisplayPreferencesRow[]; integration?:CalendarIntegrationData; imageUrls: Record<string,string>
 }

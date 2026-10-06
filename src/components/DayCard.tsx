@@ -4,6 +4,7 @@ import { dayLabels, summarizeDay } from '../lib/schedule'
 import { PictureTile } from './PictureTile'
 import { TodayBadge } from './TodayBadge'
 interface DayCardProps {
+  weather?:import('react').ReactNode
   day: DaySchedule
   isToday: boolean
   subdued?: boolean
@@ -13,7 +14,7 @@ interface DayCardProps {
   showWho?:boolean
   showWhere?:boolean
 }
-export function DayCard({ day, isToday, onSelect, showActivityTimes=false, subdued=false, allowNavigation=true, showWho=true, showWhere=true }: DayCardProps) {
+export function DayCard({ day, isToday, onSelect, weather, showActivityTimes=false, subdued=false, allowNavigation=true, showWho=true, showWhere=true }: DayCardProps) {
   const labels = dayLabels(day.date)
   const summary = summarizeDay(day)
   return (
@@ -23,6 +24,7 @@ export function DayCard({ day, isToday, onSelect, showActivityTimes=false, subdu
       disabled={!allowNavigation} onClick={onSelect}>
       <span className="today-slot">{isToday && <TodayBadge />}</span>
       <span className="day-heading"><span className="day-name">{labels.shortName}</span><span className="day-number">{labels.dayOfMonth}</span></span>
+      {weather}
       {showActivityTimes&&<ActivityTimes day={day}/>}
       {summary ? <span className="day-pictures">
         <PictureTile item={summary.activity} category="DO" />

@@ -2,9 +2,10 @@ import type { DisplayRendererProps } from '../types/display'
 import { selectSequence, visibleContext, formatDisplayTime } from './preferences'
 import { PictureTile } from '../components/PictureTile'
 import { PhotoFrame } from '../components/PhotoFrame'
-export function FirstNextThenRenderer({schedule,preferences,now,savedView}:DisplayRendererProps) {
+export function FirstNextThenRenderer({profileSwitch,schedule,preferences,now,savedView}:DisplayRendererProps) {
  const items=selectSequence(schedule,now,preferences.maxVisibleItems)
  return <main className="immediate-shell" data-display-mode="first-next-then" data-motion={preferences.motionPreference} aria-label="First, next, then">
+  {profileSwitch&&<div className="sequence-profile-switch">{profileSwitch}</div>}
   {items.length===0?<div className="display-state" role="status"><span aria-hidden="true">☀</span>NO PLANS</div>:<ol className="immediate-sequence" style={{gridTemplateColumns:`repeat(${items.length}, minmax(0, 1fr))`}}>
    {items.map(({position,event})=>{
     const context=visibleContext(event,preferences)

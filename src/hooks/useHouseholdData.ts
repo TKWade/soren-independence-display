@@ -1,47 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { households, loadHousehold } from '../data/repository'
 import type { HouseholdData, HouseholdRow } from '../data/records'
-export function useHouseholdData(userId: string | undefined) {
+import {startHouseholdRefresh} from './householdRefresh'
+export function useHouseholdData(userId: string | undefined,initialHousehold?:string,strict=false) {
  const [list,setList] = useState<HouseholdRow[]>([])
- const [selected,setSelected] = useState(() => new URLSearchParams(window.location.search).get('household') ?? '')
+ const [selected,setSelected] = useState(() => initialHousehold??new URLSearchParams(window.location.search).get('household')??'')
  const [data,setData] = useState<HouseholdData | null>(null)
  const [loading,setLoading] = useState(true)
  const [error,setError] = useState(false)
- const generation = useRef(0)
- const [refreshCount, setRefreshCount] = useState(0)
- const refresh = useCallback(() => setRefreshCount(value => value+1),[])
- useEffect(() => {
-  const current=++generation.current
-  let cancelled=false
-  const load = async () => {
-   await Promise.resolve()
-   if (cancelled) return
-   setLoading(true)
-   setError(false)
-   if (!userId) { setList([]); setData(null); setLoading(false); return }
-   try {
-    const available=await households()
-    if(cancelled || current!==generation.current) return
-    setList(available)
-    const household=available.find(item=>item.id===selected) ?? available[0]
-    if(!household) { setData(null); setLoading(false); return }
-    if(household.id!==selected) { setSelected(household.id); return }
-    const snapshot=await loadHousehold(household)
-    if(!cancelled && current===generation.current) { setData(snapshot); setError(false) }
-   } catch {
-    if(!cancelled && current===generation.current) setError(true)
-   } finally {
-    if(!cancelled && current===generation.current) setLoading(false)
-   }
-  }
-  void load()
-  return () => {cancelled=true}
- },[userId,selected,refreshCount])
- useEffect(() => {
-  const timer=window.setInterval(refresh,60_000)
-  window.addEventListener('online',refresh)
-  window.addEventListener('focus',refresh)
-  return ()=>{window.clearInterval(timer);window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh)}
- },[refresh])
- return { list,selected,setSelected,data: data?.household.id === selected ? data : null,loading,error,refresh }
+ const refreshRef=useRef<()=>void>(()=>{})
+ const refresh=useCallback(()=>refreshRef.current(),[])
+ useEffect(()=>{
+  if(!userId)return
+  const lifecycle=startHouseholdRefresh({selected,strict,households,load:loadHousehold,
+   start:()=>{setLoading(true);setError(false)},list:setList,select:setSelected,
+   data:snapshot=>{setData(previous=>({...snapshot,weather:snapshot.weather??(previous?.household.id===snapshot.household.id?previous.weather:undefined)}));setError(false)},
+   empty:()=>setData(null),error:()=>setError(true),done:()=>setLoading(false)
+  },{setInterval:(callback,ms)=>window.setInterval(callback,ms),clearInterval:id=>window.clearInterval(id as number),visible:()=>document.visibilityState==='visible',listen:(event,callback)=>{
+   const target=event==='visibilitychange'?document:window
+   target.addEventListener(event,callback);return ()=>target.removeEventListener(event,callback)
+  }})
+  refreshRef.current=lifecycle.refresh
+  return ()=>{refreshRef.current=()=>{};lifecycle.dispose()}
+ },[userId,selected,strict])
+ return {list:userId?list:[],selected,setSelected,data:userId&&data?.household.id===selected?data:null,loading:userId?loading:false,error:userId?error:false,refresh}
 }

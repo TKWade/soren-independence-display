@@ -1,3 +1,5 @@
+import {useDevicePreferences} from './hooks/useDevicePreferences'
+import {launchHousehold} from './device/preferences'
 import { lazy, Suspense } from 'react'
 import { useSession } from './hooks/useSession'
 import { useHouseholdData } from './hooks/useHouseholdData'
@@ -13,9 +15,11 @@ export default function Root() {
  </Suspense>
 }
 function AuthenticatedApp({userId,authLoading,admin}:{userId?:string;authLoading:boolean;admin:boolean}) {
- const store=useHouseholdData(userId)
+ const devicePreferences=useDevicePreferences(userId)
+ const launch=launchHousehold(window.location.search,devicePreferences,admin)
+ const store=useHouseholdData(userId,launch.householdId,launch.strict)
  if(admin) return <Admin userId={userId} authLoading={authLoading} store={store}/>
  if(authLoading) return <div className="display-state" role="status"><span aria-hidden="true">◷</span> WAIT</div>
  if(!supabase || !userId) return <div className="display-state" role="status"><span aria-hidden="true">☀</span> NOT READY</div>
- return <App store={store}/>
+ return <App store={store} devicePreferences={devicePreferences}/>
 }

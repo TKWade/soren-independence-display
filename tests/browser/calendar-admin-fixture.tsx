@@ -1,3 +1,6 @@
+import {WeatherSettings} from '../../src/admin/WeatherSettings'
+import {ProfileAccessSettings} from '../../src/admin/ProfileAccessSettings'
+import {fixtureWeather} from './weather-fixture'
 import { CaregiverToolbar } from '../../src/admin/CaregiverToolbar'
 import { DeletionDialog } from '../../src/admin/DeleteControl'
 import { useState } from 'react'
@@ -40,13 +43,13 @@ export function CalendarAdminFixture() {
  const [tab,setTab]=useState('calendars')
  const [householdId,setHouseholdId]=useState('h')
  const households=[fixture.household,{...fixture.household,id:'other',name:'Other household'},{...fixture.household,id:'empty',name:'Empty household'}]
- const data={...fixture,household:households.find(h=>h.id===householdId)!,profiles:householdId==='empty'?[]:householdId==='other'?[{id:'only',name:'Alex',active:true}]:[...fixture.profiles,{id:'archived',name:'Archived example',active:false}]} as unknown as HouseholdData
+ const data={...fixture,weather:fixtureWeather(new Date(),fixture.household.time_zone),household:households.find(h=>h.id===householdId)!,profiles:householdId==='empty'?[]:householdId==='other'?[{id:'only',name:'Alex',active:true}]:[...fixture.profiles,{id:'archived',name:'Archived example',active:false}]} as unknown as HouseholdData
  const run=async()=>{setMessage('Save disabled in this read-only fixture.');return false}
  return <main className="admin-shell"><CaregiverHeader logoSrc={new URLSearchParams(window.location.search).has('logoFallback')?'/brand/missing-test-logo.png':undefined}><button className="quiet" disabled>Sign out</button></CaregiverHeader>
  <p className="info-panel">Fictional, read-only data. No backend calls or saves.</p><button className="secondary" onClick={auditDocumentScroll}>Audit document scroll</button>
  <CaregiverToolbar households={households} householdId={data.household.id} profiles={data.profiles} loading={false} onHouseholdChange={setHouseholdId} onRefresh={()=>setMessage('Read-only fixture refreshed.')}/>
- <nav aria-label="Caregiver sections">{['profiles','people','places','activities','schedule','home','calendars'].map(name=><button key={name} aria-current={tab===name?'page':undefined} onClick={()=>setTab(name)}>{name==='home'?'HOME & SLEEP':name.toUpperCase()}</button>)}</nav>
- <fieldset className="admin-workspace" key={householdId}>{tab==='profiles'?<ProfileEditor data={data} run={run}/>:tab==='home'?<HomeEditor data={data} run={run}/>:tab==='schedule'?<ScheduleEditor data={data} run={run}/>:tab==='calendars'?<CalendarAdmin data={data} run={run}/>:<LibraryEditor key={tab} kind={tab as 'people'|'places'|'activities'} data={data} run={run}/>}</fieldset>
+ <WeatherSettings data={data} run={run} searchLocation={async()=>[{label:'Salina, Kansas, United States',latitude:38.84,longitude:-97.61}]}/><nav aria-label="Caregiver sections">{['profiles','people','places','activities','schedule','home','calendars'].map(name=><button key={name} aria-current={tab===name?'page':undefined} onClick={()=>setTab(name)}>{name==='home'?'HOME & SLEEP':name.toUpperCase()}</button>)}</nav>
+ <fieldset className="admin-workspace" key={householdId}>{tab==='profiles'?<><ProfileAccessSettings householdId={householdId} run={run} readOnly/><ProfileEditor data={data} run={run} readOnly/></>:tab==='home'?<HomeEditor data={data} run={run}/>:tab==='schedule'?<ScheduleEditor data={data} run={run}/>:tab==='calendars'?<CalendarAdmin data={data} run={run}/>:<LibraryEditor key={tab} kind={tab as 'people'|'places'|'activities'} data={data} run={run}/>}</fieldset>
  <button className="secondary" onClick={()=>{setTyped('');setDialogOpen(true)}}>Preview deletion dialog (fictional)</button>
  {dialogOpen&&<DeletionDialog entity="profiles" id="fixture" label="Permanent delete" preview={{name:'Example profile',blocked:true,dependencies:{shared_event_visuals:24,home_rules:7,event_mappings:12}}} typed={typed} setTyped={setTyped} close={()=>setDialogOpen(false)} confirm={()=>{}}/>}
  <p role="status">{message}</p></main>

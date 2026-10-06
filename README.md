@@ -96,3 +96,14 @@ Calendar Inbox mappings remain optional. See [Home & Sleep configuration](docs/c
 for resolution, compatibility, caregiver review and deployment steps.
 
 See [automatic sync, Standard clock/times, and safe deletion](docs/automatic-sync-time-deletion.md) for the new migration/deployment checklist, Cron management, dependency audit and manual verification steps.
+
+Weather MVP architecture, setup, validation and wall-tablet checklist: [docs/weather-mvp.md](docs/weather-mvp.md).
+
+Trusted-device wall pilot controls, refresh/offline boundaries, and physical-device checklist: [docs/wall-display-readiness.md](docs/wall-display-readiness.md).
+
+Fictional Android packaging test: see [Amazon Fire / Kids feasibility](docs/fire-kids-feasibility.md).
+
+Avatar profile switching, household caregiver PIN setup, session-bound access
+checks and the temporary trusted-caregiver-session boundary:
+[Profile switching](docs/profile-switching.md). Apply the new migration and deploy
+the profile-access function during an authorized rollout before using this UI.

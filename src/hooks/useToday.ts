@@ -1,17 +1,11 @@
+import {startDisplayClock} from './displayClock'
 import { useEffect, useState } from 'react'
 /** Refresh event status every 15 seconds and immediately after the tablet wakes. */
 export function useToday() {
   const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const refresh = () => setNow(new Date())
-    const timer = window.setInterval(refresh, 15_000)
-    window.addEventListener('focus', refresh)
-    document.addEventListener('visibilitychange', refresh)
-    return () => {
-      window.clearInterval(timer)
-      window.removeEventListener('focus', refresh)
-      document.removeEventListener('visibilitychange', refresh)
-    }
-  }, [])
+  useEffect(() => startDisplayClock(setNow,{
+    now:()=>Date.now(),setInterval:(fn,ms)=>window.setInterval(fn,ms),clearInterval:id=>window.clearInterval(id as number),
+    listen:(event,fn)=>{const target=event==='focus'?window:document;target.addEventListener(event,fn);return ()=>target.removeEventListener(event,fn)}
+  }),[])
   return now
 }

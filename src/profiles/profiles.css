@@ -1,0 +1,56 @@
+@import '../display/tokens.css';
+.profile-avatar {display:grid;place-items:center;width:100%;aspect-ratio:1;border-radius:50%;overflow:hidden;color:#fff;font:700 2.4em/1 system-ui,sans-serif;}
+.profile-avatar img {width:100%;height:100%;object-fit:cover;display:block;}
+.profile-switch-trigger {width:48px;height:48px;flex:0 0 48px;border:0;padding:3px;border-radius:50%;background:transparent;font-size:7px;}
+.profile-switch-trigger:focus-visible,.profile-choice:focus-visible {outline:3px solid var(--brand-navy);outline-offset:5px;}
+.profile-chooser {position:fixed;inset:0;margin:auto;max-width:min(960px,calc(100% - 32px));width:fit-content;max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--border-soft);border-radius:24px;background:var(--surface);color:var(--text-primary);overflow-y:auto;box-shadow:0 20px 80px #172d4940;}
+.profile-chooser::backdrop {background:#142b48b8;}
+.profile-chooser-content {padding:clamp(20px,4vw,48px);text-align:center;font-family:system-ui,sans-serif;}
+.profile-chooser h1 {font-size:clamp(24px,3vw,36px);line-height:1.2;margin:0 0 28px;}
+.profile-grid {display:flex;justify-content:center;flex-wrap:wrap;gap:28px 32px;max-width:840px;}
+.profile-choice {width:144px;flex:0 0 144px;display:flex;flex-direction:column;align-items:center;gap:12px;background:transparent;border:0;border-radius:12px;padding:0;color:inherit;font:inherit;}
+.profile-choice-image {width:144px;position:relative;font-size:22px;border-radius:50%;}
+.profile-choice[aria-current] .profile-choice-image {outline:3px solid var(--brand-sky);outline-offset:5px;}
+.profile-choice-name {font-weight:700;font-size:20px;line-height:1.25;overflow-wrap:anywhere;max-width:100%;}
+.profile-current {font-size:11px;letter-spacing:.08em;}
+.profile-lock {position:absolute;right:0;bottom:0;background:var(--surface);border:1px solid var(--border-soft);border-radius:50%;width:32px;height:32px;display:grid;place-items:center;font-size:18px;}
+.profile-choice:disabled {opacity:.65;}
+.profile-pin-identity {width:112px;margin:auto;font-size:20px;}
+.profile-pin-identity h2 {font-size:20px;overflow-wrap:anywhere;margin:12px 0;}
+.profile-pin-label {display:flex;flex-direction:column;gap:8px;font-weight:600;}
+.profile-pin-label input {box-sizing:border-box;max-width:100%;width:240px;height:52px;margin:auto;text-align:center;letter-spacing:.3em;font-size:24px;border:1px solid var(--border-strong);border-radius:10px;background:white;color:var(--text-primary);}
+.profile-keypad {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:260px;margin:16px auto;}
+.profile-keypad button,.profile-dialog-actions button {min-height:48px;border:1px solid var(--border-strong);border-radius:12px;background:var(--surface-muted);color:var(--text-primary);font:600 18px system-ui,sans-serif;padding:10px 14px;}
+.profile-dialog-actions {display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:20px 0 0;}
+.profile-dialog-actions button[type=submit] {background:var(--brand-navy);color:white;}
+.profile-chooser button:disabled {cursor:default;}
+.profile-error {min-height:1.4em;margin:12px 0 0;color:#8c252c;}
+.profile-guidance {font-size:14px;max-width:400px;margin:20px auto;}
+.sequence-profile-switch {display:flex;justify-content:flex-end;margin-bottom:8px;}
+@media(max-width:1024px){.profile-choice,.profile-choice-image{width:112px;flex-basis:112px}.profile-choice-image{font-size:18px}.profile-grid{gap:24px}}
+@media(max-width:600px){.profile-choice,.profile-choice-image{width:92px;flex-basis:92px}.profile-choice-image{font-size:15px}.profile-choice-name{font-size:17px}.profile-grid{gap:24px 20px}.profile-chooser-content{padding:24px 20px}}
+@media(max-height:480px){.profile-pin-identity{width:72px;font-size:14px}.profile-chooser h1{margin-bottom:12px}.profile-keypad{gap:5px;margin:10px auto}.profile-chooser-content{padding:20px}.profile-grid{gap:20px}}
+
+/* Named caregiver PIN anatomy stays within a normal tablet viewport. */
+.profile-pin-dialog {width:min(440px,calc(100% - 32px));}
+.profile-pin-dialog .profile-chooser-content {padding:20px 24px;}
+.profile-pin-dialog h1 {font-size:22px;margin:0 0 12px;}
+.profile-pin-dialog .profile-pin-identity {width:80px;font-size:15px;}
+.profile-pin-dialog .profile-pin-identity h2 {width:320px;max-width:calc(100vw - 80px);margin:8px 0 12px;position:relative;left:50%;transform:translateX(-50%);font-size:20px;}
+.profile-pin-dialog .profile-pin-label {font-size:16px;gap:6px;}
+.profile-pin-dialog .profile-pin-label input {height:44px;}
+.profile-pin-dialog .profile-keypad {gap:6px;margin:12px auto;}
+.profile-pin-dialog .profile-keypad button {min-height:44px;padding:6px 12px;}
+.profile-pin-dialog .profile-dialog-actions {margin:8px 0 0;}
+.profile-pin-dialog .profile-error {height:40px;min-height:40px;margin:8px 0 0;font-size:14px;line-height:20px;}
+.profile-pin-dialog .profile-guidance {margin:8px auto;}
+@media(max-height:480px) and (min-width:600px){
+ .profile-pin-dialog {width:560px;}
+ .profile-pin-dialog .profile-chooser-content {padding:12px 20px;}
+ .profile-pin-dialog form {display:grid;grid-template-columns:180px 260px;column-gap:24px;align-items:center;}
+ .profile-pin-dialog .profile-pin-identity {grid-column:1;grid-row:1 / 3;}
+ .profile-pin-dialog .profile-pin-identity h2 {width:180px;}
+ .profile-pin-dialog .profile-pin-label {grid-column:2;}
+ .profile-pin-dialog .profile-keypad {grid-column:2;margin:8px 0;}
+ .profile-pin-dialog .profile-error,.profile-pin-dialog .profile-dialog-actions {grid-column:1 / -1;}
+}

@@ -1,0 +1,7 @@
+.weather-cue{display:inline-flex;align-items:center;justify-content:center;gap:5px;color:var(--brand-navy);font-size:16px;line-height:1.2;max-width:100%;vertical-align:middle}
+.weather-cue svg{width:32px;height:32px;flex:0 0 32px}
+.weather-cue strong{font-size:18px;font-weight:800}
+.weather-condition,.weather-range{font-size:11px;display:block}
+.day-card>.weather-cue{margin:-8px 0 4px;min-height:32px}
+.detail-heading .weather-cue{margin-inline:auto}
+.month-day .weather-cue svg{width:24px;height:24px;flex-basis:24px}

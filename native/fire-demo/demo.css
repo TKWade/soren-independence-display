@@ -1,0 +1,3 @@
+@import "../../src/index.css";
+/* The native build root is separate; include shared component utility classes. */
+@source "../../src";

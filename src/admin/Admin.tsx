@@ -1,3 +1,5 @@
+import {WeatherSettings} from './WeatherSettings'
+import {ProfileAccessSettings} from './ProfileAccessSettings'
 import { CaregiverToolbar } from './CaregiverToolbar'
 import { CaregiverHeader } from './CaregiverHeader'
 import { CalendarAdmin } from './CalendarAdmin'
@@ -40,7 +42,7 @@ export default function Admin({userId,authLoading,store}:{userId?:string;authLoa
    // A local sign-out clears the display and cached auth even if the server is offline.
    const {error}=await client().auth.signOut({scope:'local'});if(error) throw error
   },'Signed out.')}>Sign out</button></CaregiverHeader>
-  {store.list.length>0 && <CaregiverToolbar households={store.list} householdId={store.selected} profiles={store.data?.household.id===store.selected?store.data.profiles:[]} onHouseholdChange={store.setSelected} onRefresh={store.refresh} loading={store.loading}/>}
+  {store.list.length>0 && <CaregiverToolbar userId={userId} households={store.list} householdId={store.selected} profiles={store.data?.household.id===store.selected?store.data.profiles:[]} onHouseholdChange={store.setSelected} onRefresh={store.refresh} loading={store.loading}/>}
   {(store.error || failed) && <p role="alert" className="admin-error">{failed ? message : 'Unable to refresh data. Previously loaded records may be out of date.'}</p>}
   {!failed && message && <p className="admin-status success" role="status">{message}</p>}
   {store.loading && <p role="status">Loading…</p>}
@@ -50,8 +52,10 @@ export default function Admin({userId,authLoading,store}:{userId?:string;authLoa
    })
   }}><label>Household name<input name="name" maxLength={100} required/></label><label>Timezone (IANA)<input name="zone" defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} required/></label><button disabled={busy}>Create household</button></form></section>}
   {store.data && <div key={store.data.household.id}>
+   <WeatherSettings key={store.data.household.id+String(store.data.weather?.revision)} data={store.data} run={run}/>
    <nav aria-label="Caregiver sections">{(['profiles','people','places','activities','schedule','home','calendars'] as const).map(name=><button key={name} aria-current={name===tab?'page':undefined} onClick={()=>{setTab(name);setMessage('')}}>{name==='home'?'HOME & SLEEP':name.toUpperCase()}</button>)}</nav>
    <fieldset className="admin-workspace" disabled={busy}>
+    {tab==='profiles'&&<ProfileAccessSettings key={store.data.household.id} householdId={store.data.household.id} run={run}/>}
     {tab==='profiles' ? <ProfileEditor data={store.data} run={run}/> : tab==='calendars' ? <CalendarAdmin data={store.data} run={run}/> : tab==='home' ? <HomeEditor data={store.data} run={run}/> : tab==='schedule' ? <ScheduleEditor data={store.data} run={run}/> : <LibraryEditor key={tab} kind={tab} data={store.data} run={run}/>}
    </fieldset>
    {store.data.profiles.length===0 && <section><h2>Getting started</h2><p>Create profiles under Profiles and add your libraries, or load fictional sample data into an empty household.</p>

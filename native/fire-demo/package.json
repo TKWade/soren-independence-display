@@ -1,0 +1,2 @@
+{"name":"soren-fire-demo","private":true,"version":"0.1.0","type":"module","scripts":{"build":"tsc --noEmit -p tsconfig.json && vite build --config vite.config.ts","sync":"npm run build && cap sync android","open":"cap open android"},"dependencies":{"@capacitor/core":"8.4.3","@capacitor/android":"8.4.3"},"devDependencies":{"@capacitor/cli":"8.4.3"}}
+

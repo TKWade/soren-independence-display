@@ -4,6 +4,9 @@ export type CalendarView = 'week' | 'month'
 /** Planned only; never selectable until a renderer is implemented. */
 export type PlannedDisplayMode = 'short-sequence' | 'half-day' | 'full-day' | 'two-day'
 export interface ProfileDisplayPreferences {
+ showProfileSwitching?:boolean
+ showWeather:boolean
+ weatherDetail:'simple'|'standard'
  version: 1
  displayMode: DisplayMode
  allowedViews: CalendarView[]
@@ -26,5 +29,5 @@ export interface ProfileDisplayPreferences {
 export interface DisplayPreferencesRow {id:string;household_id:string;profile_id:string;preferences:ProfileDisplayPreferences}
 /** One normalized engine output, with no persistence or provider contracts. */
 export interface NormalizedSchedule {days:DaySchedule[];timeZone:string}
-export interface DisplayRendererProps {schedule:NormalizedSchedule;profileName:string;preferences:ProfileDisplayPreferences;now:Date;savedView?:boolean;loadDays?:(dates:string[])=>DaySchedule[]}
+export interface DisplayRendererProps {profileSwitch?:import('react').ReactNode;weather?:import('../weather/types').HouseholdWeather;schedule:NormalizedSchedule;profileName:string;preferences:ProfileDisplayPreferences;now:Date;savedView?:boolean;loadDays?:(dates:string[])=>DaySchedule[]}
 export interface SequenceItem {position:'FIRST'|'NEXT'|'THEN';event:DisplayEvent}

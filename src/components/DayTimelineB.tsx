@@ -1,3 +1,4 @@
+import {WeatherCue} from '../weather/WeatherCue'
 import { defaultDisplayPreferences, visibleContext, formatDisplayTime } from '../display/preferences'
 import type { ProfileDisplayPreferences } from '../types/display'
 import { PhotoFrame } from './PhotoFrame'
@@ -7,7 +8,7 @@ import { dateKey, dayLabels, getTimelineState } from '../lib/schedule'
 import { EventContextRow } from './EventContextRow'
 import { TodayBadge } from './TodayBadge'
 
-export default function DayTimelineB({ day, now, preferences=defaultDisplayPreferences() }: { day: DaySchedule; now: Date; preferences?:ProfileDisplayPreferences }) {
+export default function DayTimelineB({ weather, day, now, preferences=defaultDisplayPreferences() }: { weather?:import('../weather/types').HouseholdWeather; day: DaySchedule; now: Date; preferences?:ProfileDisplayPreferences }) {
   const timeline = getTimelineState(day, now)
   const layout = timeline.events.length === 1 ? 'single' : timeline.events.length === 2 ? 'pair' : 'timeline'
   const statusLabels = { now: '▶ NOW', next: '→ NEXT', past: '✓ DONE', future: '' }
@@ -16,6 +17,7 @@ export default function DayTimelineB({ day, now, preferences=defaultDisplayPrefe
       <div className="day-composition" data-layout={layout}>
       <div className="detail-heading">
         <p>{dayLabels(day.date).displayDate}</p>
+        {preferences.showWeather&&<WeatherCue weather={weather} date={day.date} now={now} zone={day.timeZone??weather?.forecast?.timeZone??'UTC'} detail={preferences.weatherDetail} day/>}
         {day.date === dateKey(now, day.timeZone) && <TodayBadge />}
       </div>
       {timeline.events.length === 0 && <div className="display-state" role="status">☀ NO PLANS</div>}

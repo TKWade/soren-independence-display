@@ -14,3 +14,15 @@ verify_jwt = false
 
 [functions.household-maintenance]
 verify_jwt = false
+
+[functions.weather-actions]
+# Handler verifies bearer and household membership.
+verify_jwt = false
+
+[functions.weather-scheduled]
+# Dedicated scheduler secret; no caller-selected targets.
+verify_jwt = false
+
+[functions.profile-access]
+# Handler verifies bearer with getUser, session_id and household membership.
+verify_jwt = false

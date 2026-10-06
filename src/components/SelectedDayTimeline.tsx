@@ -6,7 +6,7 @@ import { selectDayVariant } from '../lib/dayVariant'
 const DevelopmentFallback = import.meta.env.DEV
  ? lazy(()=>import('./DayTimeline').then(module=>({default:module.DayTimeline})))
  : null
-export function SelectedDayTimeline(props:{day:DaySchedule;now:Date;preferences?:ProfileDisplayPreferences}) {
+export function SelectedDayTimeline(props:{weather?:import('../weather/types').HouseholdWeather;day:DaySchedule;now:Date;preferences?:ProfileDisplayPreferences}) {
  if (DevelopmentFallback && selectDayVariant(window.location.search,import.meta.env.DEV)==='a') {
   return <Suspense fallback={<DayTimelineB {...props}/>}><DevelopmentFallback {...props}/></Suspense>
  }
