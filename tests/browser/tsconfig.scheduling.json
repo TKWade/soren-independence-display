@@ -1,0 +1,1 @@
+{"extends":"../../tsconfig.app.json","compilerOptions":{"tsBuildInfoFile":"../../node_modules/.tmp/tsconfig.scheduling.tsbuildinfo"},"include":["scheduling","scheduling-main.tsx"]}
