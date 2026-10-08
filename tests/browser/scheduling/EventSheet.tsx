@@ -2,7 +2,7 @@ import {useState,type FormEvent} from 'react'
 
 import {Art,Sheet} from './Shared'
 
-import {formatDate,formatTime,fromTime,timeInput,duplicateEvent,type PrototypeActivity,type PrototypeData,type PrototypeEvent} from './model'
+import {formatDate,formatTime,fromTime,timeInput,changeEventStart,duplicateEvent,type PrototypeActivity,type PrototypeData,type PrototypeEvent} from './model'
 
 import type {PictureKind} from '../../../src/types/calendar'
 
@@ -68,7 +68,7 @@ export function EventSheet({data,profileId,date,start,event,onClose,onSave}:Prop
 
    <fieldset><legend>{event?'Activity':'Favorites & recent activities'}</legend><div className="sp-activity-options">{working.activities.map(a=><button type="button" key={a.id} aria-pressed={a.id===draft.activityId} onClick={()=>select(a)}><Art kind={a.kind}/><span>{a.name}</span><small>{a.duration} min</small></button>)}<button type="button" className="sp-new" onClick={()=>openInline('activity')}><span aria-hidden="true">＋</span>New Activity</button></div></fieldset>
 
-   <div className="sp-fields"><label>Date<input type="date" value={draft.date} required onChange={e=>setDraft(d=>({...d,date:e.target.value}))}/></label><label>Start<input type="time" step="900" value={timeInput(draft.start)} required onChange={e=>setDraft(d=>({...d,start:fromTime(e.target.value)}))}/></label><label>End<input type="time" step="900" value={draft.end===1440?'00:00':timeInput(draft.end)} required onChange={e=>setDraft(d=>({...d,end:e.target.value==='00:00'?1440:fromTime(e.target.value)}))}/></label></div>
+   <div className="sp-fields"><label>Date<input type="date" value={draft.date} required onChange={e=>setDraft(d=>({...d,date:e.target.value}))}/></label><label>Start<input type="time" step="900" value={timeInput(draft.start)} required onChange={e=>setDraft(d=>changeEventStart(d,fromTime(e.target.value)))}/></label><label>End<input type="time" step="900" value={draft.end===1440?'00:00':timeInput(draft.end)} required onChange={e=>setDraft(d=>({...d,end:e.target.value==='00:00'?1440:fromTime(e.target.value)}))}/></label></div>
 
    <details className="sp-context-details"><summary>With {draft.personIds.map(id=>working.people.find(p=>p.id===id)?.name).join(', ')||'no one selected'} · Where {working.places.find(p=>p.id===draft.placeId)?.name||'not set'}</summary><div>
 

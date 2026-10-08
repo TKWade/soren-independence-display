@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,readdir} from 'node:fs/promises'
-import {createFixture,visibleEvents,overlapLayout,moveEvent,copyDay,applyRoutine,reviewImports,rangeDates,shiftRange,addDays,TODAY,ordered} from './browser/scheduling/model.ts'
+import {createFixture,visibleEvents,overlapLayout,changeEventStart,moveEvent,copyDay,applyRoutine,reviewImports,rangeDates,shiftRange,addDays,TODAY,ordered} from './browser/scheduling/model.ts'
 
 test('fictional scenarios have distinct profiles, dense quarter-hour schedules and no accepted pending imports',()=>{
  const family=createFixture('family'),home=createFixture('residential')
@@ -12,12 +12,45 @@ test('fictional scenarios have distinct profiles, dense quarter-hour schedules a
  assert.ok(home.events.filter(e=>e.profileIds.includes('alex')&&e.date===TODAY&&e.end-e.start===15).length>=12)
  for(const e of [...home.events,...family.events]){assert.equal(e.start%15,0);assert.equal(e.end%15,0);assert.ok(e.end>e.start)}
 })
+test('editing Start immediately repairs an earlier or equal End to 30 minutes later',()=>{
+ const event={...createFixture('family').events[0],start:900,end:945}
+ const repaired=changeEventStart(event,990)
+ assert.deepEqual([repaired.start,repaired.end],[990,1020]) // 4:30–5:00 PM
+ assert.equal(changeEventStart(event,945).end,975) // Equal endpoints also need repair.
+ assert.equal(event.end,945)
+})
+
+test('editing Start preserves a valid later End instead of preserving duration',()=>{
+ const event={...createFixture('family').events[0],start:900,end:1050}
+ const edited=changeEventStart(event,990)
+ assert.deepEqual([edited.start,edited.end],[990,1050]) // 4:30–5:30 PM
+ assert.equal(changeEventStart(event,840).end,1050)
+})
+
+test('editing Start keeps quarter-hour alignment and caps repaired End at same-day midnight',()=>{
+ const event={...createFixture('family').events[0],start:900,end:945}
+ assert.deepEqual([changeEventStart(event,1425).start,changeEventStart(event,1425).end],[1425,1440])
+ for(let minutes=0;minutes<=1440;minutes++){
+  const edited=changeEventStart(event,minutes)
+  assert.equal(edited.start%15,0);assert.equal(edited.end%15,0)
+  assert.ok(edited.end>edited.start&&edited.end<=1440)
+ }
+ assert.equal(changeEventStart(event,NaN),event)
+})
+
 test('timeline gestures snap, retain duration, bound endpoints and keep imported timing read-only',()=>{
  const e={...createFixture('family').events[0],start:915,end:960}
  assert.deepEqual([moveEvent(e,45).start,moveEvent(e,45).end],[960,1005])
  assert.equal(moveEvent(e,22).start,930)
  assert.equal(moveEvent(e,-5000).start,0);assert.equal(moveEvent(e,5000).end,1440)
  assert.equal(moveEvent(e,-5000,true).end,e.start+15);assert.equal(moveEvent(e,5000,true).end,1440)
+ const existing={...e,start:900,end:945}
+ assert.deepEqual([moveEvent(existing,60).start,moveEvent(existing,60).end],[960,1005]) // 3:00–3:45 → 4:00–4:45
+ for(const delta of [-5000,-61,-22,22,60,5000]){
+  const moved=moveEvent(existing,delta)
+  assert.equal(moved.end-moved.start,45)
+  assert.equal(moved.start%15,0);assert.equal(moved.end%15,0)
+ }
  const imported={...e,origin:'imported'};assert.equal(moveEvent(imported,30),imported)
  assert.deepEqual(ordered([{...e,id:'late',start:1000},{...e,id:'early',start:500}]).map(e=>e.id),['early','late'])
 })
@@ -69,4 +102,61 @@ test('prototype entry is development guarded and production code cannot import f
  await walk(new URL('../src/',import.meta.url))
  const app=await readFile(new URL('./browser/scheduling/SchedulingPrototype.tsx',import.meta.url),'utf8')
  assert.doesNotMatch(app,/supabase|functions\.invoke|localStorage|fetch\(/)
+})
+
+
+test('timeline initial focus uses today context, first event on other dates, and daytime for empty days',async()=>{
+ const {initialTimelineMinute,visibleTimelineMinute}=await import('./browser/scheduling/timelineInteraction.ts')
+ const events=[{...createFixture('family').events[0],start:600}]
+ assert.equal(initialTimelineMinute(TODAY,events),840)
+ assert.equal(initialTimelineMinute('2026-10-07',events),585)
+ assert.equal(initialTimelineMinute(TODAY,[]),540)
+ assert.equal(visibleTimelineMinute(480,1140,-580,100,2),825)
+ assert.equal(visibleTimelineMinute(480,1140,500,100,2),480)
+ assert.equal(visibleTimelineMinute(480,1140,-9000,100,2),1125)
+})
+
+test('long-press waits 500ms; early swipes/scrolling cancel without moving events',async()=>{
+ const {TimelineGesture,HOLD_MS}=await import('./browser/scheduling/timelineInteraction.ts')
+ const event={...createFixture('family').events[0],start:900,end:945},g=new TimelineGesture()
+ g.begin(event,100,200,0,0);assert.equal(g.activate(HOLD_MS-1),false)
+ assert.equal(g.finish(true),undefined) // Short tap remains an editor action, no move.
+ g.begin(event,100,200,0,0);g.update(102,210,0,2)
+ assert.equal(g.activate(600),false);assert.equal(g.finish(true),undefined)
+ g.begin(event,100,200,0,0);g.update(100,200,12,2)
+ assert.equal(g.activate(600),false);assert.equal(g.finish(true),undefined)
+ g.begin(event,100,200,0,0);g.update(103,204,0,2)
+ assert.equal(g.activate(HOLD_MS),true)
+ assert.equal(g.finish(true),undefined) // Holding without movement does not write.
+})
+
+test('activated hold preserves duration, snaps, accounts for autoscroll and cancels atomically',async()=>{
+ const {TimelineGesture}=await import('./browser/scheduling/timelineInteraction.ts')
+ const event={...createFixture('family').events[0],start:900,end:945},g=new TimelineGesture()
+ g.begin(event,100,200,0,0);g.activate(500);g.update(100,260,0,2)
+ assert.equal(g.state.preview.start,930);assert.equal(g.state.preview.end,975)
+ g.update(100,260,60,2)
+ const moved=g.finish(true);assert.equal(moved.start,960);assert.equal(moved.end,1005)
+ for(const delta of [-9999,63,9999]){
+  g.begin(event,100,200,0,0);g.activate(500);g.update(100,200+delta,0,2)
+  assert.equal(g.state.preview.end-g.state.preview.start,45)
+  assert.equal(g.state.preview.start%15,0);assert.equal(g.state.preview.end%15,0)
+  assert.equal(g.finish(false),undefined) // Escape, pointer cancel and Cancel move share this path.
+  assert.equal(g.state,undefined)
+ }
+ assert.equal(event.start,900);assert.equal(event.end,945)
+ assert.equal(g.begin({...event,origin:'imported'},0,0,0,0),false)
+})
+
+test('handle bypasses hold delay and edge scroll respects sticky toolbar and frame duration',async()=>{
+ const {TimelineGesture,edgeScrollDelta}=await import('./browser/scheduling/timelineInteraction.ts')
+ const event={...createFixture('family').events[0],start:900,end:945},g=new TimelineGesture()
+ g.begin(event,100,200,0,0,true);g.update(100,260,0,2)
+ assert.equal(g.finish(true).start,930)
+ g.begin(event,100,200,0,0,true,true);g.update(100,230,0,2)
+ assert.equal(g.finish(true).end,960)
+ assert.equal(edgeScrollDelta(400,110,800,16),0)
+ assert.ok(edgeScrollDelta(120,110,800,16)<0)
+ assert.ok(edgeScrollDelta(790,110,800,16)>0)
+ assert.equal(edgeScrollDelta(790,110,800,1000),edgeScrollDelta(790,110,800,32))
 })

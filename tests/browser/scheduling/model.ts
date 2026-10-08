@@ -16,6 +16,12 @@ export const formatTime=(minutes:number)=>minutes===1440?'12:00 AM (+1 day)':`${
 export const timeInput=(minutes:number)=>`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`
 export const fromTime=(time:string)=>{const [h,m]=time.split(':').map(Number);return h*60+m}
 export const snap=(minutes:number)=>Math.round(minutes/15)*15
+/** Editing Start keeps a later End; repairs use 30 minutes, capped at same-day midnight. */
+export function changeEventStart(event:PrototypeEvent,minutes:number):PrototypeEvent {
+ if(!Number.isFinite(minutes))return event
+ const start=Math.max(0,Math.min(1425,snap(minutes)))
+ return {...event,start,end:event.end>start?event.end:Math.min(1440,start+30)}
+}
 export const ordered=(events:PrototypeEvent[])=>[...events].sort((a,b)=>a.date.localeCompare(b.date)||a.start-b.start||a.end-b.end||a.id.localeCompare(b.id))
 export const visibleEvents=(data:PrototypeData,profileId:string)=>ordered(data.events.filter(e=>!e.cancelled&&e.review==='included'&&e.profileIds.includes(profileId)))
 export function rangeDates(anchor:string,horizon:Horizon):string[] {
