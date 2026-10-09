@@ -1,15 +1,16 @@
 import type {PictureKind} from '../../../src/types/calendar.ts'
 /** Disposable interaction state. Not a second production schedule or persistence model. */
 export interface PrototypeActivity {id:string;name:string;kind:PictureKind;duration:number;personIds:string[];placeId?:string}
-export interface PrototypeProfile {id:string;name:string;active:true;avatar:string}
+export interface PrototypeIdentity {id:string;name:string;active:true;avatar:string}
+export interface PrototypeProfile extends PrototypeIdentity {visibility:Horizon}
 export interface ContextItem {id:string;name:string;kind:PictureKind}
 export interface PrototypeEvent {id:string;date:string;start:number;end:number;activityId:string;profileIds:string[];personIds:string[];placeId?:string;origin:'local'|'imported';title?:string;review:'pending'|'included'|'ignored';cancelled?:boolean}
 export interface PrototypeRule {title:string;fromDate:string;profileIds:string[];activityId:string;decision:'included'|'ignored'}
-export interface PrototypeData {profiles:PrototypeProfile[];activities:PrototypeActivity[];people:ContextItem[];places:ContextItem[];events:PrototypeEvent[];rules:PrototypeRule[]}
+export interface PrototypeData {caregiver:PrototypeIdentity;profiles:PrototypeProfile[];activities:PrototypeActivity[];people:ContextItem[];places:ContextItem[];events:PrototypeEvent[];rules:PrototypeRule[]}
 export type Horizon = 0|1|2|3|4|5|6|7|14|21|28|'month'
 export const TODAY='2026-10-06'
 export const NOW=14*60+30
-export const HORIZONS: {value:Horizon;label:string}[]=[{value:0,label:'Now + Next (0 days)'},...[1,2,3,4,5,6,7].map(n=>({value:n as Horizon,label:n===1?'1 Day':`${n} Days`})),{value:14,label:'2 Weeks'},{value:21,label:'3 Weeks'},{value:28,label:'4 Weeks'},{value:'month',label:'Month'}]
+export const HORIZONS: {value:Horizon;label:string}[]=[{value:0,label:'Now + Next'},...[1,2,3,4,5,6,7].map(n=>({value:n as Horizon,label:n===1?'Today':`${n} Days`})),{value:14,label:'2 Weeks'},{value:21,label:'3 Weeks'},{value:28,label:'4 Weeks'},{value:'month',label:'Month'}]
 export const addDays=(date:string,days:number)=>new Date(Date.parse(date+'T12:00:00Z')+days*86400000).toISOString().slice(0,10)
 export const formatDate=(date:string,options:Intl.DateTimeFormatOptions={weekday:'short',month:'short',day:'numeric'})=>new Intl.DateTimeFormat('en-US',{...options,timeZone:'UTC'}).format(new Date(date+'T12:00:00Z'))
 export const formatTime=(minutes:number)=>minutes===1440?'12:00 AM (+1 day)':`${Math.floor(minutes/60)%12||12}:${String(minutes%60).padStart(2,'0')} ${minutes<720?'AM':'PM'}`
@@ -83,7 +84,7 @@ export function applyRoutine(data:PrototypeData,profileId:string,date:string,nam
  })]}
 }
 export function createFixture(scenario:'family'|'residential'):PrototypeData {
- const profiles=(scenario==='family'?[['soren','Soren','sun'],['siv','Siv','flower']]:[['alex','Alex','star'],['jordan','Jordan','moon'],['riley','Riley','sun'],['morgan','Morgan','flower']]).map(([id,name,avatar])=>({id,name,avatar,active:true as const}))
+ const profiles=(scenario==='family'?[['soren','Soren','sun'],['siv','Siv','flower']]:[['alex','Alex','star'],['jordan','Jordan','moon'],['riley','Riley','sun'],['morgan','Morgan','flower']]).map(([id,name,avatar])=>({id,name,avatar,active:true as const,visibility:(scenario==='family'?7:1) as Horizon}))
  const people:ContextItem[]=[{id:'lee',name:scenario==='family'?'Lee':'Sam · support',kind:'dad'},{id:'jules',name:scenario==='family'?'Jules':'Avery · support',kind:'mom'}]
  const places:ContextItem[]=[{id:'school-place',name:'Oak School',kind:'school'},{id:'clinic',name:'Maple Center',kind:'home'},{id:'home-place',name:scenario==='family'?'Home':'Cedar House',kind:'home'},{id:'garden',name:'Garden',kind:'park'}]
  const activities:PrototypeActivity[]=[
@@ -112,5 +113,34 @@ export function createFixture(scenario:'family'|'residential'):PrototypeData {
   }
  })
  if(scenario==='family')for(let i=0;i<9;i++)events.push({id:`import-${i}`,date:addDays(TODAY,i%7),start:13*60+(i%3)*30,end:13*60+(i%3)*30+45,activityId:i%3===1?'pt':'therapy',profileIds:[],personIds:[],origin:'imported',title:i%3===1?'Physical therapy':'Therapy appointment',review:'pending'})
- return {profiles,activities,people,places,events,rules:[]}
+ return {caregiver:{id:'caregiver',name:'Caregiver',avatar:'star',active:true},profiles,activities,people,places,events,rules:[]}
+}
+
+
+export const AVATARS=['sun','flower','star','moon'] as const
+export function updatePrototypeProfile(data:PrototypeData,id:string,name:string,avatar:string,visibility?:Horizon):PrototypeData {
+ const clean=name.trim()
+ if(!clean||clean.length>40||!AVATARS.some(a=>a===avatar))return data
+ if(id===data.caregiver.id)return {...data,caregiver:{...data.caregiver,name:clean,avatar}}
+ if(!data.profiles.some(p=>p.id===id)||!HORIZONS.some(h=>h.value===visibility))return data
+ return {...data,profiles:data.profiles.map(p=>p.id===id?{...p,name:clean,avatar,visibility:visibility!}:p)}
+}
+export function restoreScheduleSnapshot(current:PrototypeData,previous:PrototypeData):PrototypeData {
+ return {...previous,profiles:current.profiles,caregiver:current.caregiver}
+}
+export function moveEventToDay(event:PrototypeEvent,date:string):PrototypeEvent {
+ if(event.origin!=='local'||event.cancelled||!/^\d{4}-\d{2}-\d{2}$/.test(date))return event
+ const parsed=new Date(date+'T12:00:00Z')
+ if(!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==date||event.date===date)return event
+ return {...event,date}
+}
+/** Monday–Sunday picker around the saved event, independently of profile visibility. */
+export function nearbyWeek(date:string) {
+ const weekday=new Date(date+'T12:00:00Z').getUTCDay()
+ return Array.from({length:7},(_,i)=>addDays(date,i-((weekday+6)%7)))
+}
+export function currentAndNext(events:PrototypeEvent[],date=TODAY,minute=NOW) {
+ const sorted=ordered(events),current=sorted.find(e=>e.date===date&&e.start<=minute&&e.end>minute)
+ const upcoming=sorted.filter(e=>e.date>date||(e.date===date&&e.start>minute))
+ return current?[current,...upcoming.slice(0,1)]:upcoming.slice(0,2)
 }

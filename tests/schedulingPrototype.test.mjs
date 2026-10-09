@@ -160,3 +160,65 @@ test('handle bypasses hold delay and edge scroll respects sticky toolbar and fra
  assert.ok(edgeScrollDelta(790,110,800,16)>0)
  assert.equal(edgeScrollDelta(790,110,800,1000),edgeScrollDelta(790,110,800,32))
 })
+
+
+test('cross-day moves preserve identity, exact time, duration, profile and visual context',async()=>{
+ const {moveEventToDay,nearbyWeek}=await import('./browser/scheduling/model.ts')
+ const event={...createFixture('family').events[0],date:'2026-10-06',start:900,end:945}
+ const moved=moveEventToDay(event,'2026-10-07')
+ assert.deepEqual(moved,{...event,date:'2026-10-07'})
+ assert.equal(moved.end-moved.start,45);assert.equal(event.date,'2026-10-06')
+ assert.equal(moveEventToDay(event,'2026-02-30'),event)
+ assert.equal(moveEventToDay(event,event.date),event)
+ const imported={...event,origin:'imported'};assert.equal(moveEventToDay(imported,'2026-10-07'),imported)
+ assert.deepEqual(nearbyWeek('2026-10-06'),['2026-10-05','2026-10-06','2026-10-07','2026-10-08','2026-10-09','2026-10-10','2026-10-11'])
+ assert.ok(nearbyWeek('2027-01-01').includes('2026-12-31'))
+})
+
+test('calendar handle drag commits only valid drops; cancellation, clicks and narrow screens do not move',async()=>{
+ const {CalendarDrag}=await import('./browser/scheduling/calendarInteraction.ts')
+ const event={...createFixture('family').events[0],date:'2026-10-06',start:900,end:945},drag=new CalendarDrag()
+ assert.equal(drag.begin(event,100,200,false),false)
+ assert.equal(drag.begin({...event,origin:'imported'},100,200,true),false)
+ drag.begin(event,100,200,true);drag.update(103,204,'2026-10-07');assert.equal(drag.finish(true),undefined)
+ drag.begin(event,100,200,true);drag.update(300,200,'2026-10-07')
+ assert.equal(drag.state.date,'2026-10-07');assert.deepEqual(drag.finish(true),{...event,date:'2026-10-07'})
+ for(const date of [undefined,'2026-10-06','invalid']){drag.begin(event,100,200,true);drag.update(300,200,date);assert.equal(drag.finish(true),undefined)}
+ drag.begin(event,100,200,true);drag.update(300,200,'2026-10-07');assert.equal(drag.finish(false),undefined)
+ assert.equal(event.date,'2026-10-06')
+})
+
+test('caregiver setup keeps per-profile preferences and identity separate from scheduling undo',async()=>{
+ const {updatePrototypeProfile,moveEventToDay,restoreScheduleSnapshot}=await import('./browser/scheduling/model.ts')
+ const original=createFixture('family'),configured=updatePrototypeProfile(original,'siv','Siv','moon','month')
+ assert.equal(configured.profiles.find(p=>p.id==='siv').visibility,'month')
+ assert.equal(configured.profiles.find(p=>p.id==='soren').visibility,7)
+ assert.equal(configured.events,original.events)
+ const moved={...configured,events:configured.events.map((e,i)=>i===0?moveEventToDay(e,'2026-10-07'):e)}
+ const renamed=updatePrototypeProfile(moved,'caregiver','Caregiver Lee','flower')
+ const undone=restoreScheduleSnapshot(renamed,original)
+ assert.deepEqual(undone.events,original.events)
+ assert.equal(undone.profiles.find(p=>p.id==='siv').visibility,'month')
+ assert.equal(undone.caregiver.name,'Caregiver Lee')
+ assert.equal(undone.caregiver.avatar,'flower')
+ assert.equal(updatePrototypeProfile(configured,'siv',' ','moon','month'),configured)
+ assert.equal(updatePrototypeProfile(configured,'siv','Siv','unknown','month'),configured)
+ assert.equal(updatePrototypeProfile(configured,'siv','Siv','sun',99),configured)
+})
+
+test('each setup visibility renders its range; Month is six Sunday–Saturday rows and Now/Next skips other concurrent events',async()=>{
+ const {HORIZONS,updatePrototypeProfile,currentAndNext}=await import('./browser/scheduling/model.ts')
+ const data=createFixture('family')
+ for(const h of HORIZONS){
+  const configured=updatePrototypeProfile(data,'siv','Siv','flower',h.value),profile=configured.profiles.find(p=>p.id==='siv')
+  assert.equal(profile.visibility,h.value)
+  assert.equal(rangeDates(TODAY,profile.visibility).length,h.value==='month'?42:Math.max(1,h.value))
+  assert.equal(configured.profiles.find(p=>p.id==='soren').visibility,7)
+ }
+ const month=rangeDates('2026-10-06','month')
+ assert.equal(new Date(month[0]+'T12:00:00Z').getUTCDay(),0)
+ assert.equal(new Date(month.at(-1)+'T12:00:00Z').getUTCDay(),6)
+ assert.equal(month.filter(d=>d.startsWith('2026-10')).length,31)
+ const result=currentAndNext(visibleEvents(data,'soren'))
+ assert.equal(result.length,2);assert.equal(result[0].activityId,'pt');assert.equal(result[1].activityId,'rest')
+})
