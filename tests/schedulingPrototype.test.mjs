@@ -188,6 +188,20 @@ test('calendar handle drag commits only valid drops; cancellation, clicks and na
  assert.equal(event.date,'2026-10-06')
 })
 
+test('Week returns to its horizontal position at the same width and starts at Today after a layout change',async()=>{
+ const {restoreWeekScroll}=await import('./browser/scheduling/calendarInteraction.ts')
+ assert.equal(restoreWeekScroll(undefined,373,1940),0)
+ const saved={left:331.2,width:373}
+ assert.equal(restoreWeekScroll(saved,373,1940),331.2)
+ assert.equal(restoreWeekScroll(saved,373.5,1940),331.2)
+ assert.equal(restoreWeekScroll(saved,373,200),200)
+ assert.equal(restoreWeekScroll(saved,373,0),0)
+ assert.equal(restoreWeekScroll(saved,793,3879),0)
+ assert.equal(restoreWeekScroll({left:-20,width:373},373,1940),0)
+ assert.equal(restoreWeekScroll({left:NaN,width:373},373,1940),0)
+ assert.deepEqual(saved,{left:331.2,width:373})
+})
+
 test('caregiver setup keeps per-profile preferences and identity separate from scheduling undo',async()=>{
  const {updatePrototypeProfile,moveEventToDay,restoreScheduleSnapshot}=await import('./browser/scheduling/model.ts')
  const original=createFixture('family'),configured=updatePrototypeProfile(original,'siv','Siv','moon','month')

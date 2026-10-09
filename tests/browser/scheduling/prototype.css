@@ -171,7 +171,7 @@ body {margin:0;} .sp-app *,.sp-sheet * {box-sizing:border-box;}
  .sp-app .sp-back-button {font-size:12px;padding:8px;}
  .sp-app .sp-child-back {left:12px;bottom:12px;}
  .sp-avatar-options .profile-avatar {width:44px;font-size:24px;}.sp-setup-profile {padding:12px;gap:12px;}.sp-setup-profile>.profile-avatar {width:48px;}
- .sp-calendar:not([data-month=true]) {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+ .sp-calendar[data-compact=true]:not([data-month=true]) {grid-template-columns:repeat(2,minmax(0,1fr));}
  .sp-calendar[data-month=true] {grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
  .sp-calendar[data-month=true] .sp-calendar-day {border-radius:7px;}
  .sp-calendar[data-month=true] .sp-calendar-day>header {padding:3px;}
@@ -186,3 +186,23 @@ body {margin:0;} .sp-app *,.sp-sheet * {box-sizing:border-box;}
 
 .sp-month-review-list {display:none;}
 @media(max-width:600px){.sp-month-review-list {display:block;margin-top:20px!important;}.sp-month-review-list>div {display:flex;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-soft);}.sp-month-review-list label {flex:1;flex-direction:row;align-items:center;gap:8px;}.sp-month-review-list input {width:22px;height:22px;}.sp-month-review-list small {display:block;font-weight:400;}}
+
+/* Seven readable ~140px day cards + six 10px gaps need 1040px of content width.
+   Short ranges keep the same chronological strip; Month/multiweek retain their grids. */
+.sp-calendar-wrap {container-type:inline-size;min-width:0;}
+.sp-calendar[data-week=true][data-count] {grid-template-columns:repeat(var(--sp-day-count,7),minmax(0,1fr));}
+.sp-calendar[data-week=true][data-count='2'] {--sp-day-count:2;}
+.sp-calendar[data-week=true][data-count='3'] {--sp-day-count:3;}
+.sp-calendar[data-week=true][data-count='4'] {--sp-day-count:4;}
+.sp-calendar[data-week=true][data-count='5'] {--sp-day-count:5;}
+.sp-calendar[data-week=true][data-count='6'] {--sp-day-count:6;}
+@container (width < 1040px) {
+ .sp-calendar[data-week=true][data-count] {
+  --sp-week-strip:1;
+  grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:min(78vw,calc(100% - 44px));
+  gap:10px;overflow-x:auto;overscroll-behavior-x:contain;
+  scroll-snap-type:x proximity;scroll-padding-inline:2px;
+  padding:3px 2px 12px;scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;
+ }
+ .sp-calendar[data-week=true]>.sp-calendar-day {scroll-snap-align:start;}
+}

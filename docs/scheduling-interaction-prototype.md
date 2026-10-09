@@ -43,7 +43,13 @@ Changing Start immediately keeps End if it is still later. Otherwise, End become
 
 Open a saved local event and choose **Move to another day**. The horizontal Monday–Sunday picker highlights its current date and offers adjacent-week arrows. Choosing a different day immediately moves the saved event and opens the destination Day. Start/end, duration, event identity, profile relevance and context stay intact. Undo restores the original date. This quick action moves the saved version (unsaved sheet drafts are not applied); the normal form still offers a Custom date section for editing a draft before Save.
 
-Editable Week/multiweek/Month calendars at widths of 900px or more have dedicated move handles. Drag across date cells to preview a highlighted destination; release commits once. Tap a handle or use Enter to open the day picker. Drop outside a date, Escape or pointer cancellation makes no change. Imports remain read-only. The gesture never attaches to ordinary activity-card swipes; narrow layouts omit handles and use the same event-sheet picker. There is no drag across an off-screen month boundary; use the picker's week arrows/custom date.
+Editable full-grid Week/multiweek/Month calendars at viewport widths of 900px or more have dedicated move handles. A Week also needs at least 1040px of available content width; scrollable Week strips always use the day picker. Drag across date cells to preview a highlighted destination; release commits once. Tap a handle or use Enter to open the day picker. Drop outside a date, Escape or pointer cancellation makes no change. Imports remain read-only. The gesture never attaches to ordinary activity-card swipes; narrow layouts omit handles and use the same event-sheet picker. There is no drag across an off-screen month boundary; use the picker's week arrows/custom date.
+
+### Responsive Week strip
+
+Week and other short 2–7-day ranges remain one chronological row. Below 1040px of available calendar width, that row scrolls horizontally with 78vw day cards (bounded to leave at least 44px for the next-day cue). It uses gentle `x proximity` snapping, start-aligned days, a thin scrollbar and a keyboard-focusable region. The page still owns vertical scrolling; neither the body nor the Week introduces page-width overflow. At sufficient width, seven roughly 140px or wider day cards fit with six 10px gaps and no horizontal scrolling. Month and multiweek keep their existing grids.
+
+A fresh current range starts with Today followed by Tomorrow. Returning from Day or toggling caregiver tools restores the Week's horizontal position for that profile/range. Rotation or another layout-width change falls back to the first date. The editing Today button resets the strip to Today. Ordinary activity cards preserve native panning; scrollable Week strips omit cross-day drag handles and retain the event sheet's Move-to-day picker.
 
 ## Imported events on the calendar
 
@@ -77,7 +83,7 @@ Shared prototype interactions reside under `tests/browser/scheduling/`. The orig
 ## Validation
 
 - Initial prototype baseline: full suite **189 passed**, including database/security regressions.
-- Current refinement: `node --test tests/schedulingPrototype.test.mjs`: **19 passed**, covering time repair, drag duration, hold delay/tolerance, swipe/scroll cancellation, cancel without commit, imported timing protection, initial positioning, visible-time Add and toolbar-aware auto-scroll.
+- Current refinement: `node --test tests/schedulingPrototype.test.mjs tests/prototypeHosting.test.mjs`: **22 passed** (20 scheduling and 2 hosting), including horizontal Week restoration and safe fallback after a layout-width change, along with existing editing, profile visibility and isolation regressions.
 - `npm run lint`: passed.
 - `npx tsc -p tests/browser/tsconfig.scheduling.json`: passed (fixture files are deliberately outside the production TypeScript project).
 - `npm run build`: production/PWA build passed; emitted files were scanned to verify no prototype entry, interaction labels or simulated unlock code was bundled.
@@ -93,14 +99,30 @@ Shared prototype interactions reside under `tests/browser/scheduling/`. The orig
 - Latest viewport checks: 1920×1080, 1280×800, 768×1024, 412×924 and 844×390 all retained aligned toolbar/timeline, reachable sticky Back and no horizontal page overflow. Day measured 1160px wide at 1920; the existing 30px/15-minute scale (52px on narrow phones) stayed unchanged.
 - Added regressions for valid/invalid calendar drops, cancellation, narrow-screen fallback, day-picker date boundaries, profile isolation, configuration surviving schedule Undo, all supported visibility ranges and current-plus-next selection.
 
+## Responsive Week verification
+
+All requested sizes retained seven dates on one row in child and caregiver modes, with no horizontal page overflow or internal vertical scrolling. Fresh ranges started at horizontal offset zero.
+
+| Viewport | Approximate day width | Week behavior |
+| --- | --- | --- |
+| 390×844 | 303px | Horizontal strip; 36px next-day preview |
+| 412×924 | 321px | Horizontal strip; 39px next-day preview |
+| 430×932 | 336px | Horizontal strip; 44px next-day preview |
+| 844×390 | 658px | Horizontal strip; 122px next-day preview |
+| 768×1024 | 599px | Horizontal strip; 106px next-day preview |
+| 1280×800 | 161px | All seven days visible |
+| 1920×1080 | 209px | All seven days visible |
+
+Native horizontal wheel/trackpad-style input moved only the Week strip. At 390px, the Move-to-day picker moved School from Wednesday to Thursday with its 8–11 AM duration intact; Undo restored it. Returning from Day restored the prior 313.6px Week offset. Narrow strips exposed no drag handles; the two wider layouts retained them. Siv's Month preference still produced 42 dates in six rows without changing Soren's 7 Days. Physical finger-swipe arbitration and proximity-snap feel remain actual-device checks.
+
 ## Known compromises
 
 - This validates interactions, not production authorization or data correctness. Simulated unlock has no security value and must not be wired into the real display.
 - Event dates use fixed fictional local date/minute values. There is no DST, timezone conversion, all-day or overnight scheduling, recurrence editing, offline queue or concurrent-edit resolution. Midnight is permitted only as the end of the same scheduling day.
 - Pictures are existing built-in placeholders. PT/Therapy need appropriate real activity imagery before daily use. All recent/favorite suggestions are fixture data, not a learned ranking.
 - Child and caregiver displays here explore a shared calendar surface; they do not replace the approved Week, Day-B or First/Next/Then layouts. Now + Next uses a frozen clock, one current event and the next future start (or the next two future events when nothing is current); simultaneous current events use stable chronological order and still need product review.
-- Long timelines use natural document scrolling. Sheets have bounded scrolling with persistent actions. On phones, multi-day Week ranges use two-column date cards. Month keeps seven columns, with a count and representative activity picture on each date; tap a date for its full timeline. A gold dot marks pending imports, and the mobile Month review layer exposes its selectable imported-event list below the grid. Dense overlap lanes prioritize labels over secondary detail; tap to inspect/edit full details.
-- Pointer dragging was verified in desktop Chromium emulation. The available browser driver cannot synthesize a held touch; long-press/swipe/cancel transitions are covered by deterministic gesture tests, but native touch arbitration remains an actual-device acceptance check. Actual Fire/iPad touch, assistive technology, long names and larger overlap clusters still need user testing. There is no production drag library. Calendar drag uses a dedicated handle at widths of 900px or more; cards themselves retain normal scrolling. Narrow screens use the day picker.
+- Long timelines use natural document scrolling. Sheets have bounded scrolling with persistent actions. Narrow Week ranges use a horizontal single-row strip. Month keeps seven columns, with a count and representative activity picture on each date; tap a date for its full timeline. A gold dot marks pending imports, and the mobile Month review layer exposes its selectable imported-event list below the grid. Dense overlap lanes prioritize labels over secondary detail; tap to inspect/edit full details.
+- Pointer dragging was verified in desktop Chromium emulation. The available browser driver cannot synthesize a held touch; long-press/swipe/cancel transitions are covered by deterministic gesture tests, but native touch arbitration remains an actual-device acceptance check. Actual Fire/iPad touch, assistive technology, long names and larger overlap clusters still need user testing. There is no production drag library. Calendar drag uses dedicated handles only on sufficiently wide full grids; cards themselves retain normal scrolling. Scrollable Week strips use the day picker.
 - Copy/routines append and expose overlaps rather than resolving them. Imports use explicit profile/activity decisions, not the real matching engine. Future-title application covers cached fictional occurrences only.
 
 ## Recommended production plan (requires a separate approved milestone)

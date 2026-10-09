@@ -1,4 +1,10 @@
 import {moveEventToDay,type PrototypeEvent} from './model.ts'
+export interface WeekScrollPosition {left:number;width:number}
+/** Restore only at the same layout width; rotation falls back to the first day. */
+export function restoreWeekScroll(saved:WeekScrollPosition|undefined,width:number,maxLeft:number) {
+ if(!saved||!Number.isFinite(saved.left)||Math.abs(saved.width-width)>1)return 0
+ return Math.max(0,Math.min(saved.left,maxLeft))
+}
 /** Only dedicated handles opt into dragging. Ordinary card gestures remain browser scrolling. */
 export class CalendarDrag {
  state?: {event:PrototypeEvent;x:number;y:number;active:boolean;date?:string}
