@@ -5,6 +5,19 @@ import {resolve} from 'node:path'
 import {spawnSync} from 'node:child_process'
 import {verifyPrototypeBuild} from '../scripts/verify-prototype-build.mjs'
 
+test('prototype Worker explicitly serves only the isolated physical site without a script or SPA fallback',async()=>{
+ const config=JSON.parse(await readFile('wrangler.prototype.jsonc','utf8'))
+ assert.deepEqual(config,{
+  $schema:'./node_modules/wrangler/config-schema.json',
+  name:'soren-prototype',compatibility_date:'2026-10-08',
+  assets:{directory:'./dist-prototype',html_handling:'auto-trailing-slash',not_found_handling:'404-page'},
+ })
+ const pkg=JSON.parse(await readFile('package.json','utf8'))
+ const lock=JSON.parse(await readFile('package-lock.json','utf8'))
+ assert.match(pkg.devDependencies.wrangler,/^\d+\.\d+\.\d+$/,'Wrangler must be exactly pinned')
+ assert.equal(lock.packages['node_modules/wrangler'].version,pkg.devDependencies.wrangler)
+})
+
 test('isolated static build emits reloadable routes and ignores browser environment credentials',async()=>{
  await mkdir('node_modules/.tmp',{recursive:true})
  const output=await mkdtemp(resolve('node_modules/.tmp/prototype-hosting-'))

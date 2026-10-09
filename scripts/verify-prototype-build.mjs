@@ -16,6 +16,7 @@ export async function verifyPrototypeBuild(directory=resolve('dist-prototype')) 
   }
  }
  await walk(directory)
+ for(const file of staticFiles)assert.ok(files.includes(file),`Missing required static file: ${file}`)
  for(const route of routes){
   const html=await readFile(resolve(directory,route),'utf8')
   assert.match(html,/Content-Security-Policy/)
