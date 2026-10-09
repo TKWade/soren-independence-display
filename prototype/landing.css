@@ -1,0 +1,5 @@
+.sp-landing {max-width:680px;margin:auto;padding:clamp(24px,6vw,64px) 24px;display:grid;gap:20px;}
+.sp-landing .display-brand {justify-self:start;}
+.sp-landing nav {display:grid;gap:12px;margin:8px 0;}
+.sp-landing nav a {min-height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:white;border:1px solid var(--border-strong);border-radius:14px;padding:16px 20px;text-decoration:none;font-weight:700;color:var(--brand-navy);}
+.sp-landing nav a:hover {background:var(--brand-sky-soft);}

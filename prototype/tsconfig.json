@@ -1,0 +1,5 @@
+{
+  "extends": "../tests/browser/tsconfig.scheduling.json",
+  "compilerOptions": {"tsBuildInfoFile":"../node_modules/.tmp/tsconfig.prototype.tsbuildinfo"},
+  "include": ["main.tsx", "vite.config.ts", "../tests/browser/scheduling"]
+}

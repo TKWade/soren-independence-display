@@ -13,6 +13,10 @@ Run `npm run dev -- --host 127.0.0.1 --port 5173` (reuse the existing Vite serve
 
 The clock is frozen at **October 6, 2026, 2:30 PM** so tomorrow always means October 7 and both testers see the same tasks. Changes, library additions, review decisions, visibility preferences and the task checklist live only in React memory. Reloading or changing scenario resets them. Open the task page in a separate tab to keep your current schedule while checking off tasks.
 
+## Isolated static hosting
+
+Run `npm run build:prototype` to produce `dist-prototype/` with a landing page, Family, Residential, Setup and Checklist routes. This is an explicit fictional-study build; the normal production build and local fixture DEV guard remain unchanged. See [build, isolation and Cloudflare Pages settings](scheduling-prototype-hosting.md).
+
 ## Interaction model
 
 The first screen is a child display with no editing controls or pending imports. Open the profile avatar, choose **Caregiver tools**, then **Simulate unlock**. This explicitly fictional permission step never calls production PIN/authentication code. The same profile/date stays on screen and gains an **EDITING [NAME] / Add Activity / Done** toolbar. Done hides editing and pending imports.
@@ -68,7 +72,7 @@ Also try the routines, new people/places, a multi-profile import, title-wide fut
 
 Reused unchanged production components: `DisplayBrand` (approved horizontal logo), `ProfileAvatar` (circular fallback art), `Picture` (local SVG pictures), the `PictureKind` type and shared brand tokens. The prototype's editable calendar/timeline are separate development components, not changes to approved production renderers. No production schedule engine, recurrence handling, Google sync, Home & Sleep, profile PIN backend, authentication or native Fire project was changed.
 
-All executable prototype code resides under `tests/browser/scheduling/` plus the guarded `scheduling-main.tsx` entry and two fixture HTML files. The entry rejects non-development execution before dynamically importing prototype components. Production's Vite entry does not import these modules and its built assets/PWA cache contain none of the prototype pages or code. No new dependencies, migrations, Edge Functions, credentials, persistence or provider calls were introduced.
+Shared prototype interactions reside under `tests/browser/scheduling/`. The original local `scheduling-main.tsx` entry rejects non-development execution before dynamically importing components. A separate explicit `prototype/` host now packages the same components for fictional static review. Production's Vite entry does not import either entry and its built assets/PWA cache contain none of the prototype pages or code. No new dependencies, migrations, Edge Functions, credentials, persistence or provider calls were introduced.
 
 ## Validation
 
